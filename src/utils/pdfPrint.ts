@@ -5,7 +5,7 @@
  */
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import Share from 'react-native-share';
-import {Order} from '../context/AppContext';
+import type {ReceiptPayload} from './receiptTemplate';
 import {buildReceiptHTML} from './receiptTemplate';
 
 export interface PrintResult {
@@ -14,13 +14,10 @@ export interface PrintResult {
   error?: string;
 }
 
-/**
- * Generates a PDF from the order and opens the share sheet.
- */
-export async function exportReceiptAsPDF(order: Order): Promise<PrintResult> {
+export async function exportReceiptAsPDF(payload: ReceiptPayload): Promise<PrintResult> {
   try {
-    const html = buildReceiptHTML(order);
-    const fileName = `receipt_${order.id.slice(-8).toUpperCase()}_${Date.now()}`;
+    const html = buildReceiptHTML(payload);
+    const fileName = `slipgo_${payload.orderNumber}_${Date.now()}`;
 
     const options = {
       html,
@@ -35,21 +32,21 @@ export async function exportReceiptAsPDF(order: Order): Promise<PrintResult> {
       return {success: false, error: 'PDF generation failed: no file path returned'};
     }
 
-    // Share / print the PDF
     await Share.open({
       url: `file://${pdf.filePath}`,
       type: 'application/pdf',
-      title: `Receipt - ${order.restaurantName}`,
-      message: `Receipt for order #${order.id.slice(-8).toUpperCase()}`,
+      title: `Receipt — ${payload.shopName}`,
+      message: `SlipGo receipt #${payload.orderNumber}`,
       failOnCancel: false,
     });
 
     return {success: true, filePath: pdf.filePath};
-  } catch (err: any) {
-    if (err?.message?.includes('User did not share')) {
-      return {success: true}; // User cancelled share — not an error
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('User did not share')) {
+      return {success: true};
     }
     console.error('PDF export error', err);
-    return {success: false, error: err?.message ?? 'Unknown error'};
+    return {success: false, error: msg};
   }
 }

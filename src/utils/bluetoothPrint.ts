@@ -1,17 +1,13 @@
 /**
  * Bluetooth ESC/POS thermal printer utility.
  * Uses @brooons/react-native-bluetooth-escpos-printer.
- *
- * Supported printers: Any ESC/POS compatible Bluetooth thermal printer
- * (Epson, Star Micronics, HOIN, Rongta, etc.)
  */
 import {
   BluetoothManager,
   BluetoothEscposPrinter,
-  BluetoothTscPrinter,
 } from '@brooons/react-native-bluetooth-escpos-printer';
 import {Platform, PermissionsAndroid} from 'react-native';
-import {Order} from '../context/AppContext';
+import type {ReceiptPayload} from './receiptTemplate';
 import {buildESCPOSData} from './receiptTemplate';
 
 export interface BTPrinter {
@@ -24,14 +20,13 @@ export interface BTResult {
   error?: string;
 }
 
-// ─── Permissions ──────────────────────────────────────────────────────────────
-
 export async function requestBluetoothPermissions(): Promise<boolean> {
-  if (Platform.OS === 'ios') {return true;}
+  if (Platform.OS === 'ios') {
+    return true;
+  }
 
   try {
     if (Platform.Version >= 31) {
-      // Android 12+
       const results = await PermissionsAndroid.requestMultiple([
         PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
         PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
@@ -40,30 +35,25 @@ export async function requestBluetoothPermissions(): Promise<boolean> {
         results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] === 'granted' &&
         results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] === 'granted'
       );
-    } else {
-      // Android 11 and below
-      const result = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      );
-      return result === 'granted';
     }
+    const result = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+    );
+    return result === 'granted';
   } catch {
     return false;
   }
 }
 
-// ─── Enable Bluetooth ─────────────────────────────────────────────────────────
-
 export async function enableBluetooth(): Promise<BTResult> {
   try {
     await BluetoothManager.enableBluetooth();
     return {success: true};
-  } catch (e: any) {
-    return {success: false, error: e?.message ?? 'Could not enable Bluetooth'};
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return {success: false, error: msg || 'Could not enable Bluetooth'};
   }
 }
-
-// ─── Scan for devices ─────────────────────────────────────────────────────────
 
 export async function scanForPrinters(): Promise<{printers: BTPrinter[]; error?: string}> {
   try {
@@ -72,50 +62,50 @@ export async function scanForPrinters(): Promise<{printers: BTPrinter[]; error?:
       return {printers: [], error: 'Bluetooth permission denied'};
     }
 
-    const rawResult: any = await BluetoothManager.scanDevices();
+    const rawResult: {found?: unknown[]; paired?: unknown[]} = await BluetoothManager.scanDevices();
     const found = rawResult?.found ?? [];
     const paired = rawResult?.paired ?? [];
     const all = [...paired, ...found];
 
     const unique = Array.from(
-      new Map(all.map((d: any) => [d.address, d])).values(),
-    ).map((d: any) => ({name: d.name ?? 'Unknown', address: d.address}));
+      new Map(
+        all.map((d: {address?: string; name?: string}) => [
+          d.address,
+          {name: d.name ?? 'Unknown', address: d.address ?? ''},
+        ]),
+      ).values(),
+    ).filter((d: BTPrinter) => d.address);
 
     return {printers: unique};
-  } catch (e: any) {
-    return {printers: [], error: e?.message ?? 'Scan failed'};
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return {printers: [], error: msg || 'Scan failed'};
   }
 }
-
-// ─── Connect to printer ───────────────────────────────────────────────────────
 
 export async function connectToPrinter(address: string): Promise<BTResult> {
   try {
     await BluetoothManager.connect(address);
     return {success: true};
-  } catch (e: any) {
-    return {success: false, error: e?.message ?? 'Connection failed'};
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return {success: false, error: msg || 'Connection failed'};
   }
 }
-
-// ─── Disconnect ───────────────────────────────────────────────────────────────
 
 export async function disconnectPrinter(): Promise<void> {
   try {
     await BluetoothManager.disconnect();
-  } catch {}
+  } catch {
+    /* ignore */
+  }
 }
 
-// ─── Print Receipt ────────────────────────────────────────────────────────────
-
-export async function printReceiptViaBluetooth(order: Order): Promise<BTResult> {
+export async function printReceiptViaBluetooth(payload: ReceiptPayload): Promise<BTResult> {
   try {
-    const data = buildESCPOSData(order);
+    const data = buildESCPOSData(payload);
 
-    // ── Header ──
-    await BluetoothEscposPrinter.printerAlign(
-      BluetoothEscposPrinter.ALIGN.CENTER,
-    );
+    await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
     await BluetoothEscposPrinter.printText('================================\n', {});
     await BluetoothEscposPrinter.printText(`${data.header}\n`, {
       fonttype: 1,
@@ -123,30 +113,21 @@ export async function printReceiptViaBluetooth(order: Order): Promise<BTResult> 
       heighttimes: 1,
     });
     await BluetoothEscposPrinter.printText('================================\n', {});
-    await BluetoothEscposPrinter.printText(`Order #${data.orderId}\n`, {});
+    await BluetoothEscposPrinter.printText(`Order ${data.orderId}\n`, {});
     await BluetoothEscposPrinter.printText(`${data.dateStr}\n`, {});
     await BluetoothEscposPrinter.printText('--------------------------------\n', {});
 
-    // ── Items ──
-    await BluetoothEscposPrinter.printerAlign(
-      BluetoothEscposPrinter.ALIGN.LEFT,
-    );
+    await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.LEFT);
     for (const item of data.items) {
       const nameLine = truncate(item.name, 20);
       const qtyPrice = `${item.qty}x ${item.unitPrice}`.padStart(12);
       const lineTotal = item.price.padStart(8);
-      await BluetoothEscposPrinter.printText(
-        `${nameLine.padEnd(20)}${qtyPrice}${lineTotal}\n`,
-        {},
-      );
+      await BluetoothEscposPrinter.printText(`${nameLine.padEnd(20)}${qtyPrice}${lineTotal}\n`, {});
     }
 
     await BluetoothEscposPrinter.printText('--------------------------------\n', {});
 
-    // ── Totals ──
-    await BluetoothEscposPrinter.printerAlign(
-      BluetoothEscposPrinter.ALIGN.RIGHT,
-    );
+    await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.RIGHT);
     await BluetoothEscposPrinter.printText(`Subtotal: ${data.subtotal}\n`, {});
     await BluetoothEscposPrinter.printText(`Tax: ${data.tax}\n`, {});
     await BluetoothEscposPrinter.printText('================================\n', {});
@@ -157,29 +138,24 @@ export async function printReceiptViaBluetooth(order: Order): Promise<BTResult> 
     });
     await BluetoothEscposPrinter.printText('================================\n', {});
 
-    // ── Note ──
     if (data.note) {
-      await BluetoothEscposPrinter.printerAlign(
-        BluetoothEscposPrinter.ALIGN.LEFT,
-      );
+      await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.LEFT);
       await BluetoothEscposPrinter.printText(`Note: ${data.note}\n`, {});
       await BluetoothEscposPrinter.printText('--------------------------------\n', {});
     }
 
-    // ── Footer ──
-    await BluetoothEscposPrinter.printerAlign(
-      BluetoothEscposPrinter.ALIGN.CENTER,
-    );
+    await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
     await BluetoothEscposPrinter.printText(`${data.footer}\n`, {});
-    await BluetoothEscposPrinter.printText('\n\n\n', {}); // Feed paper
+    await BluetoothEscposPrinter.printText('\n\n\n', {});
 
     return {success: true};
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Bluetooth print error', e);
-    return {success: false, error: e?.message ?? 'Print failed'};
+    const msg = e instanceof Error ? e.message : String(e);
+    return {success: false, error: msg || 'Print failed'};
   }
 }
 
 function truncate(str: string, max: number): string {
-  return str.length > max ? str.slice(0, max - 1) + '…' : str;
+  return str.length > max ? `${str.slice(0, max - 1)}…` : str;
 }

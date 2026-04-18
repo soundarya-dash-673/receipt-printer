@@ -1,50 +1,38 @@
 import React from 'react';
 import {StatusBar, useColorScheme} from 'react-native';
-import {NavigationContainer} from '@react-navigation/native';
-import {Provider as PaperProvider, MD3LightTheme, MD3DarkTheme} from 'react-native-paper';
+import {NavigationContainer, DefaultTheme, DarkTheme} from '@react-navigation/native';
+import {Provider as PaperProvider} from 'react-native-paper';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
-import AppNavigator from './src/navigation/AppNavigator';
-import {AppProvider} from './src/context/AppContext';
-
-const lightTheme = {
-  ...MD3LightTheme,
-  colors: {
-    ...MD3LightTheme.colors,
-    primary: '#E86A2B',
-    secondary: '#F4A261',
-    tertiary: '#2A9D8F',
-    surface: '#FFFFFF',
-    background: '#F8F4F0',
-    onPrimary: '#FFFFFF',
-  },
-};
-
-const darkTheme = {
-  ...MD3DarkTheme,
-  colors: {
-    ...MD3DarkTheme.colors,
-    primary: '#F4A261',
-    secondary: '#E86A2B',
-    tertiary: '#2A9D8F',
-  },
-};
+import RootNavigator from './src/navigation/RootNavigator';
+import {slipgoLightTheme, slipgoDarkTheme} from './src/theme/slipgoTheme';
+import {navigationRef} from './src/navigation/navigationRef';
 
 export default function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
-  const theme = isDarkMode ? darkTheme : lightTheme;
+  const paper = isDarkMode ? slipgoDarkTheme : slipgoLightTheme;
+  const navTheme = {
+    ...(isDarkMode ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(isDarkMode ? DarkTheme.colors : DefaultTheme.colors),
+      primary: paper.colors.primary,
+      background: paper.colors.background,
+      card: isDarkMode ? '#122436' : '#FFFFFF',
+      text: isDarkMode ? '#E8ECF1' : '#0A1A2F',
+      border: '#B8C4D4',
+      notification: paper.colors.primary,
+    },
+  };
 
   return (
     <SafeAreaProvider>
-      <PaperProvider theme={theme}>
-        <AppProvider>
-          <NavigationContainer>
-            <StatusBar
-              barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-              backgroundColor={theme.colors.background}
-            />
-            <AppNavigator />
-          </NavigationContainer>
-        </AppProvider>
+      <PaperProvider theme={paper}>
+        <NavigationContainer ref={navigationRef} theme={navTheme}>
+          <StatusBar
+            barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+            backgroundColor={paper.colors.background}
+          />
+          <RootNavigator />
+        </NavigationContainer>
       </PaperProvider>
     </SafeAreaProvider>
   );
