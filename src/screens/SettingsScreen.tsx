@@ -246,7 +246,8 @@ const styles = StyleSheet.create({
   flex: {flex: 1},
   container: {flex: 1},
   content: {padding: 16, gap: 16, paddingBottom: 40},
-  section: {borderRadius: 12, padding: 16, overflow: 'hidden'},
+  // Avoid overflow + elevation on Surface (react-native-paper warns; shadows clip incorrectly)
+  section: {borderRadius: 12, padding: 16},
   sectionHeader: {flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8},
   sectionTitle: {fontWeight: '700', color: '#424242'},
   divider: {marginBottom: 14},

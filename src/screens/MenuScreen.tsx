@@ -1,10 +1,10 @@
-import React, {useState, useMemo} from 'react';
+import React, {useState, useMemo, useCallback} from 'react';
 import {
   View,
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  Alert,
+  ScrollView,
 } from 'react-native';
 import {
   FAB,
@@ -56,109 +56,120 @@ export default function MenuScreen() {
     }
   };
 
-  const renderItem = ({item}: {item: MenuItem}) => (
-    <View style={[styles.card, {backgroundColor: theme.colors.surface}]}>
-      <View style={styles.cardLeft}>
-        <View style={[styles.categoryDot, {backgroundColor: theme.colors.primary}]} />
-        <View style={styles.cardInfo}>
-          <Text variant="titleMedium" style={styles.itemName}>{item.name}</Text>
-          <Text variant="bodySmall" style={[styles.categoryText, {color: theme.colors.secondary}]}>
-            {item.category}
-          </Text>
-          {item.description ? (
-            <Text variant="bodySmall" style={styles.description} numberOfLines={1}>
-              {item.description}
+  const renderItem = useCallback(
+    ({item}: {item: MenuItem}) => (
+      <View style={[styles.card, {backgroundColor: theme.colors.surface}]}>
+        <View style={styles.cardLeft}>
+          <View style={[styles.categoryDot, {backgroundColor: theme.colors.primary}]} />
+          <View style={styles.cardInfo}>
+            <Text variant="titleMedium" style={styles.itemName}>{item.name}</Text>
+            <Text variant="bodySmall" style={[styles.categoryText, {color: theme.colors.secondary}]}>
+              {item.category}
             </Text>
-          ) : null}
+            {item.description ? (
+              <Text variant="bodySmall" style={styles.description} numberOfLines={1}>
+                {item.description}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+        <View style={styles.cardRight}>
+          <Text variant="titleMedium" style={[styles.price, {color: theme.colors.primary}]}>
+            ${item.price.toFixed(2)}
+          </Text>
+          <View style={styles.actions}>
+            <TouchableOpacity
+              style={[styles.actionBtn, {backgroundColor: '#E8F5E9'}]}
+              onPress={() => addToCart(item)}>
+              <MaterialCommunityIcons name="cart-plus" size={18} color="#2E7D32" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionBtn, {backgroundColor: '#E3F2FD'}]}
+              onPress={() => navigation.navigate('MenuItemForm', {itemId: item.id})}>
+              <MaterialCommunityIcons name="pencil" size={18} color="#1565C0" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionBtn, {backgroundColor: '#FFEBEE'}]}
+              onPress={() => setDeleteTarget(item)}>
+              <MaterialCommunityIcons name="delete" size={18} color="#C62828" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-      <View style={styles.cardRight}>
-        <Text variant="titleMedium" style={[styles.price, {color: theme.colors.primary}]}>
-          ${item.price.toFixed(2)}
+    ),
+    [theme.colors, addToCart, navigation],
+  );
+
+  const listHeader = useMemo(
+    () => (
+      <View>
+        <Searchbar
+          placeholder="Search menu items..."
+          value={search}
+          onChangeText={setSearch}
+          style={styles.searchBar}
+          iconColor={theme.colors.primary}
+          elevation={0}
+        />
+        <ScrollView
+          horizontal
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipRow}>
+          {categories.map(cat => (
+            <Chip
+              key={cat}
+              selected={selectedCategory === cat}
+              onPress={() => setSelectedCategory(cat)}
+              style={[
+                styles.chip,
+                selectedCategory === cat && {backgroundColor: theme.colors.primary},
+              ]}
+              textStyle={{
+                color: selectedCategory === cat ? '#fff' : theme.colors.onSurface,
+              }}>
+              {cat}
+            </Chip>
+          ))}
+        </ScrollView>
+        <Divider />
+        <Text variant="bodySmall" style={[styles.countText, {color: theme.colors.onSurfaceVariant}]}>
+          {filtered.length} item{filtered.length !== 1 ? 's' : ''}
         </Text>
-        <View style={styles.actions}>
-          <TouchableOpacity
-            style={[styles.actionBtn, {backgroundColor: '#E8F5E9'}]}
-            onPress={() => addToCart(item)}>
-            <MaterialCommunityIcons name="cart-plus" size={18} color="#2E7D32" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionBtn, {backgroundColor: '#E3F2FD'}]}
-            onPress={() => navigation.navigate('MenuItemForm', {itemId: item.id})}>
-            <MaterialCommunityIcons name="pencil" size={18} color="#1565C0" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionBtn, {backgroundColor: '#FFEBEE'}]}
-            onPress={() => setDeleteTarget(item)}>
-            <MaterialCommunityIcons name="delete" size={18} color="#C62828" />
-          </TouchableOpacity>
-        </View>
       </View>
-    </View>
+    ),
+    [search, setSearch, theme.colors, categories, selectedCategory, filtered.length],
+  );
+
+  const listEmpty = useMemo(
+    () => (
+      <View style={styles.emptyState}>
+        <MaterialCommunityIcons name="food-off" size={64} color="#BDBDBD" />
+        <Text variant="titleMedium" style={styles.emptyText}>No items found</Text>
+        <Text variant="bodySmall" style={styles.emptySubText}>
+          Tap + to add your first menu item
+        </Text>
+      </View>
+    ),
+    [],
   );
 
   return (
     <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      {/* Search */}
-      <Searchbar
-        placeholder="Search menu items..."
-        value={search}
-        onChangeText={setSearch}
-        style={styles.searchBar}
-        iconColor={theme.colors.primary}
-      />
-
-      {/* Category Chips */}
       <FlatList
-        horizontal
-        data={categories}
-        keyExtractor={c => c}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipRow}
-        renderItem={({item: cat}) => (
-          <Chip
-            selected={selectedCategory === cat}
-            onPress={() => setSelectedCategory(cat)}
-            style={[
-              styles.chip,
-              selectedCategory === cat && {backgroundColor: theme.colors.primary},
-            ]}
-            textStyle={{
-              color: selectedCategory === cat ? '#fff' : theme.colors.onSurface,
-            }}>
-            {cat}
-          </Chip>
-        )}
+        data={filtered}
+        keyExtractor={item => item.id}
+        renderItem={renderItem}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={listEmpty}
+        ItemSeparatorComponent={() => <View style={{height: 8}} />}
+        contentContainerStyle={styles.listContent}
+        style={styles.list}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator
       />
 
-      <Divider />
-
-      {/* Item count */}
-      <Text variant="bodySmall" style={[styles.countText, {color: theme.colors.onSurfaceVariant}]}>
-        {filtered.length} item{filtered.length !== 1 ? 's' : ''}
-      </Text>
-
-      {/* Menu List */}
-      {filtered.length === 0 ? (
-        <View style={styles.emptyState}>
-          <MaterialCommunityIcons name="food-off" size={64} color="#BDBDBD" />
-          <Text variant="titleMedium" style={styles.emptyText}>No items found</Text>
-          <Text variant="bodySmall" style={styles.emptySubText}>
-            Tap + to add your first menu item
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={item => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.list}
-          ItemSeparatorComponent={() => <View style={{height: 8}} />}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-
-      {/* FAB */}
       <FAB
         icon="plus"
         style={[styles.fab, {backgroundColor: theme.colors.primary}]}
@@ -166,7 +177,6 @@ export default function MenuScreen() {
         color="#fff"
       />
 
-      {/* Delete Confirmation Dialog */}
       <Portal>
         <Dialog visible={!!deleteTarget} onDismiss={() => setDeleteTarget(null)}>
           <Dialog.Title>Delete Item</Dialog.Title>
@@ -187,11 +197,12 @@ export default function MenuScreen() {
 
 const styles = StyleSheet.create({
   container: {flex: 1},
-  searchBar: {margin: 12, borderRadius: 10},
-  chipRow: {paddingHorizontal: 12, paddingVertical: 8, gap: 8},
+  list: {flex: 1},
+  listContent: {paddingHorizontal: 12, paddingBottom: 90, flexGrow: 1},
+  searchBar: {marginHorizontal: 0, marginBottom: 8, marginTop: 12, borderRadius: 10},
+  chipRow: {paddingHorizontal: 0, paddingVertical: 8, gap: 8, flexDirection: 'row', alignItems: 'center'},
   chip: {marginRight: 4},
-  countText: {paddingHorizontal: 16, paddingBottom: 6, marginTop: 4},
-  list: {padding: 12, paddingBottom: 90},
+  countText: {paddingHorizontal: 4, paddingBottom: 10, marginTop: 4},
   card: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -220,7 +231,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  emptyState: {flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8},
+  emptyState: {
+    paddingTop: 48,
+    paddingBottom: 48,
+    alignItems: 'center',
+    gap: 8,
+  },
   emptyText: {color: '#757575', marginTop: 12},
   emptySubText: {color: '#BDBDBD'},
   fab: {position: 'absolute', right: 16, bottom: 16},

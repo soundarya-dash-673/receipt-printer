@@ -4,10 +4,12 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useRef,
   ReactNode,
 } from 'react';
+import {AppState, AppStateStatus} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {v4 as uuidv4} from 'uuid';
+import {uuidv4} from '../utils/uuid';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -89,7 +91,36 @@ const STORAGE_KEYS = {
   MENU: '@food_receipt_menu',
   ORDERS: '@food_receipt_orders',
   SETTINGS: '@food_receipt_settings',
+  /** Milliseconds since epoch when the current 7-day local retention window started */
+  DATA_ANCHOR: '@food_receipt_data_anchor_ms',
 };
+
+/** Local AsyncStorage data is kept for this long, then cleared (menu, orders, settings). */
+const DATA_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Sets anchor on first use. If older than DATA_RETENTION_MS, removes menu/orders/settings
+ * and starts a new window. Returns whether a wipe occurred.
+ */
+async function applyLocalDataRetention(): Promise<boolean> {
+  const now = Date.now();
+  const anchorRaw = await AsyncStorage.getItem(STORAGE_KEYS.DATA_ANCHOR);
+  if (anchorRaw == null) {
+    await AsyncStorage.setItem(STORAGE_KEYS.DATA_ANCHOR, String(now));
+    return false;
+  }
+  const anchor = parseInt(anchorRaw, 10);
+  if (Number.isNaN(anchor) || now - anchor < DATA_RETENTION_MS) {
+    return false;
+  }
+  await AsyncStorage.multiRemove([
+    STORAGE_KEYS.MENU,
+    STORAGE_KEYS.ORDERS,
+    STORAGE_KEYS.SETTINGS,
+  ]);
+  await AsyncStorage.setItem(STORAGE_KEYS.DATA_ANCHOR, String(now));
+  return true;
+}
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 
@@ -99,40 +130,70 @@ export function AppProvider({children}: {children: ReactNode}) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [settings, setSettings] = useState<Settings>(defaultSettings);
 
-  // ── Load persisted data on mount ──────────────────────────────────────────
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [menuRaw, ordersRaw, settingsRaw] = await Promise.all([
-          AsyncStorage.getItem(STORAGE_KEYS.MENU),
-          AsyncStorage.getItem(STORAGE_KEYS.ORDERS),
-          AsyncStorage.getItem(STORAGE_KEYS.SETTINGS),
-        ]);
-
-        if (menuRaw) {
-          setMenuItems(JSON.parse(menuRaw));
-        } else {
-          // Seed with sample items
-          const seed: MenuItem[] = [
-            {id: uuidv4(), name: 'Margherita Pizza', price: 12.99, category: 'Mains'},
-            {id: uuidv4(), name: 'Chicken Burger', price: 9.99, category: 'Mains'},
-            {id: uuidv4(), name: 'Caesar Salad', price: 7.49, category: 'Starters'},
-            {id: uuidv4(), name: 'French Fries', price: 3.99, category: 'Sides'},
-            {id: uuidv4(), name: 'Coca Cola', price: 2.49, category: 'Drinks'},
-            {id: uuidv4(), name: 'Mango Juice', price: 2.99, category: 'Drinks'},
-          ];
-          setMenuItems(seed);
-          await AsyncStorage.setItem(STORAGE_KEYS.MENU, JSON.stringify(seed));
-        }
-
-        if (ordersRaw) {setOrders(JSON.parse(ordersRaw));}
-        if (settingsRaw) {setSettings({...defaultSettings, ...JSON.parse(settingsRaw)});}
-      } catch (e) {
-        console.warn('Failed to load app data', e);
+  const loadPersistedState = useCallback(async () => {
+    try {
+      const wiped = await applyLocalDataRetention();
+      if (wiped) {
+        setCartItems([]);
       }
-    };
-    load();
+
+      const [menuRaw, ordersRaw, settingsRaw] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEYS.MENU),
+        AsyncStorage.getItem(STORAGE_KEYS.ORDERS),
+        AsyncStorage.getItem(STORAGE_KEYS.SETTINGS),
+      ]);
+
+      if (menuRaw) {
+        setMenuItems(JSON.parse(menuRaw));
+      } else if (wiped) {
+        setMenuItems([]);
+        await AsyncStorage.setItem(STORAGE_KEYS.MENU, JSON.stringify([]));
+      } else {
+        const seed: MenuItem[] = [
+          {id: uuidv4(), name: 'Margherita Pizza', price: 12.99, category: 'Mains'},
+          {id: uuidv4(), name: 'Chicken Burger', price: 9.99, category: 'Mains'},
+          {id: uuidv4(), name: 'Caesar Salad', price: 7.49, category: 'Starters'},
+          {id: uuidv4(), name: 'French Fries', price: 3.99, category: 'Sides'},
+          {id: uuidv4(), name: 'Coca Cola', price: 2.49, category: 'Drinks'},
+          {id: uuidv4(), name: 'Mango Juice', price: 2.99, category: 'Drinks'},
+        ];
+        setMenuItems(seed);
+        await AsyncStorage.setItem(STORAGE_KEYS.MENU, JSON.stringify(seed));
+      }
+
+      if (ordersRaw) {
+        setOrders(JSON.parse(ordersRaw));
+      } else {
+        setOrders([]);
+      }
+
+      if (settingsRaw) {
+        setSettings({...defaultSettings, ...JSON.parse(settingsRaw)});
+      } else {
+        setSettings(defaultSettings);
+      }
+    } catch (e) {
+      console.warn('Failed to load app data', e);
+    }
   }, []);
+
+  useEffect(() => {
+    loadPersistedState();
+  }, [loadPersistedState]);
+
+  const appStateRef = useRef(AppState.currentState);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
+      if (
+        appStateRef.current.match(/inactive|background/) &&
+        next === 'active'
+      ) {
+        loadPersistedState();
+      }
+      appStateRef.current = next;
+    });
+    return () => sub.remove();
+  }, [loadPersistedState]);
 
   // ── Persist helpers ───────────────────────────────────────────────────────
   const persistMenu = useCallback(async (items: MenuItem[]) => {

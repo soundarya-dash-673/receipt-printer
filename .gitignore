@@ -69,3 +69,36 @@ coverage/
 
 # Logs
 *.log
+
+# -----------------------------------------------------------------------------
+# Build artifacts, binaries, and native tool caches
+# -----------------------------------------------------------------------------
+
+# iOS / Xcode (archives, symbols, test bundles)
+*.xcarchive
+*.dSYM
+*.dSYM.zip
+*.xcresult
+
+# Android packages (local release / install outputs)
+*.apk
+*.aab
+*.ap_
+
+# Android NDK / external native build (see also .cxx/ above)
+.externalNativeBuild/
+
+# Buck (if present)
+.buckd/
+buck-out/
+
+# Swift Package Manager
+.build/
+
+# Kotlin / Gradle incremental caches
+.kotlin/
+
+# Generic compiler / bundler output directories
+dist/
+out/
+target/

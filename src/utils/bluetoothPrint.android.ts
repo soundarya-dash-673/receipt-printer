@@ -1,14 +1,11 @@
 /**
- * Bluetooth ESC/POS thermal printer utility.
- * Uses @brooons/react-native-bluetooth-escpos-printer.
- *
- * Supported printers: Any ESC/POS compatible Bluetooth thermal printer
- * (Epson, Star Micronics, HOIN, Rongta, etc.)
+ * Bluetooth ESC/POS thermal printer (Android only).
+ * @brooons/react-native-bluetooth-escpos-printer is Android-only; its index.js crashes on iOS
+ * if imported (sets properties on null native modules). Use bluetoothPrint.ios.ts there.
  */
 import {
   BluetoothManager,
   BluetoothEscposPrinter,
-  BluetoothTscPrinter,
 } from '@brooons/react-native-bluetooth-escpos-printer';
 import {Platform, PermissionsAndroid} from 'react-native';
 import {Order} from '../context/AppContext';
@@ -24,14 +21,13 @@ export interface BTResult {
   error?: string;
 }
 
-// ─── Permissions ──────────────────────────────────────────────────────────────
-
 export async function requestBluetoothPermissions(): Promise<boolean> {
-  if (Platform.OS === 'ios') {return true;}
+  if (Platform.OS === 'ios') {
+    return true;
+  }
 
   try {
     if (Platform.Version >= 31) {
-      // Android 12+
       const results = await PermissionsAndroid.requestMultiple([
         PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
         PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
@@ -40,19 +36,15 @@ export async function requestBluetoothPermissions(): Promise<boolean> {
         results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] === 'granted' &&
         results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] === 'granted'
       );
-    } else {
-      // Android 11 and below
-      const result = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      );
-      return result === 'granted';
     }
+    const result = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+    );
+    return result === 'granted';
   } catch {
     return false;
   }
 }
-
-// ─── Enable Bluetooth ─────────────────────────────────────────────────────────
 
 export async function enableBluetooth(): Promise<BTResult> {
   try {
@@ -62,8 +54,6 @@ export async function enableBluetooth(): Promise<BTResult> {
     return {success: false, error: e?.message ?? 'Could not enable Bluetooth'};
   }
 }
-
-// ─── Scan for devices ─────────────────────────────────────────────────────────
 
 export async function scanForPrinters(): Promise<{printers: BTPrinter[]; error?: string}> {
   try {
@@ -87,8 +77,6 @@ export async function scanForPrinters(): Promise<{printers: BTPrinter[]; error?:
   }
 }
 
-// ─── Connect to printer ───────────────────────────────────────────────────────
-
 export async function connectToPrinter(address: string): Promise<BTResult> {
   try {
     await BluetoothManager.connect(address);
@@ -98,21 +86,18 @@ export async function connectToPrinter(address: string): Promise<BTResult> {
   }
 }
 
-// ─── Disconnect ───────────────────────────────────────────────────────────────
-
 export async function disconnectPrinter(): Promise<void> {
   try {
     await BluetoothManager.disconnect();
-  } catch {}
+  } catch {
+    /* ignore */
+  }
 }
-
-// ─── Print Receipt ────────────────────────────────────────────────────────────
 
 export async function printReceiptViaBluetooth(order: Order): Promise<BTResult> {
   try {
     const data = buildESCPOSData(order);
 
-    // ── Header ──
     await BluetoothEscposPrinter.printerAlign(
       BluetoothEscposPrinter.ALIGN.CENTER,
     );
@@ -127,7 +112,6 @@ export async function printReceiptViaBluetooth(order: Order): Promise<BTResult> 
     await BluetoothEscposPrinter.printText(`${data.dateStr}\n`, {});
     await BluetoothEscposPrinter.printText('--------------------------------\n', {});
 
-    // ── Items ──
     await BluetoothEscposPrinter.printerAlign(
       BluetoothEscposPrinter.ALIGN.LEFT,
     );
@@ -143,7 +127,6 @@ export async function printReceiptViaBluetooth(order: Order): Promise<BTResult> 
 
     await BluetoothEscposPrinter.printText('--------------------------------\n', {});
 
-    // ── Totals ──
     await BluetoothEscposPrinter.printerAlign(
       BluetoothEscposPrinter.ALIGN.RIGHT,
     );
@@ -157,7 +140,6 @@ export async function printReceiptViaBluetooth(order: Order): Promise<BTResult> 
     });
     await BluetoothEscposPrinter.printText('================================\n', {});
 
-    // ── Note ──
     if (data.note) {
       await BluetoothEscposPrinter.printerAlign(
         BluetoothEscposPrinter.ALIGN.LEFT,
@@ -166,17 +148,16 @@ export async function printReceiptViaBluetooth(order: Order): Promise<BTResult> 
       await BluetoothEscposPrinter.printText('--------------------------------\n', {});
     }
 
-    // ── Footer ──
     await BluetoothEscposPrinter.printerAlign(
       BluetoothEscposPrinter.ALIGN.CENTER,
     );
     await BluetoothEscposPrinter.printText(`${data.footer}\n`, {});
-    await BluetoothEscposPrinter.printText('\n\n\n', {}); // Feed paper
+    await BluetoothEscposPrinter.printText('\n\n\n', {});
 
     return {success: true};
-  } catch (e: any) {
-    console.error('Bluetooth print error', e);
-    return {success: false, error: e?.message ?? 'Print failed'};
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Print failed';
+    return {success: false, error: message};
   }
 }
 
