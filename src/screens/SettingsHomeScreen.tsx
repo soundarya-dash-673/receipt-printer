@@ -49,6 +49,12 @@ export default function SettingsHomeScreen() {
         left={p => <List.Icon {...p} icon="printer" />}
         onPress={() => navigation.navigate('PrinterSetup')}
       />
+      <List.Item
+        title="Toppings"
+        description="Extra & free toppings for new orders"
+        left={p => <List.Icon {...p} icon="food-variant" />}
+        onPress={() => navigation.navigate('ToppingsSetup')}
+      />
       {user?.role === 'owner' ? (
         <List.Item
           title="Staff"

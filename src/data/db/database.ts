@@ -114,5 +114,48 @@ async function runMigrations(db: SQLiteDatabase): Promise<void> {
       /* column may exist */
     }
     await exec(db, 'PRAGMA user_version = 2;');
+    version = 2;
+  }
+
+  if (version < 3) {
+    await exec(db, `
+      CREATE TABLE IF NOT EXISTS topping_catalog (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL UNIQUE,
+        price REAL NOT NULL DEFAULT 0,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      );
+    `);
+    await exec(db, `
+      CREATE TABLE IF NOT EXISTS order_item_toppings (
+        id TEXT PRIMARY KEY NOT NULL,
+        order_item_id TEXT NOT NULL,
+        topping_name TEXT NOT NULL,
+        price REAL NOT NULL DEFAULT 0,
+        FOREIGN KEY (order_item_id) REFERENCES order_items(id) ON DELETE CASCADE
+      );
+    `);
+    const [catCount] = await db.executeSql('SELECT COUNT(*) as c FROM topping_catalog;');
+    if ((catCount.rows.item(0).c as number) === 0) {
+      const now = new Date().toISOString();
+      const seed: Array<{name: string; price: number}> = [
+        {name: 'Extra cheese', price: 1.5},
+        {name: 'Bacon', price: 2.0},
+        {name: 'Olives', price: 0.75},
+        {name: 'Jalapeños', price: 0.5},
+        {name: 'No onions', price: 0},
+        {name: 'Extra sauce', price: 0},
+      ];
+      let sort = 0;
+      for (const row of seed) {
+        await exec(
+          db,
+          `INSERT INTO topping_catalog (id, name, price, sort_order, created_at) VALUES (?, ?, ?, ?, ?);`,
+          [uuidv4(), row.name, row.price, sort++, now],
+        );
+      }
+    }
+    await exec(db, 'PRAGMA user_version = 3;');
   }
 }

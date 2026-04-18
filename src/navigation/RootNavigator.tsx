@@ -15,6 +15,7 @@ import SettingsHomeScreen from '../screens/SettingsHomeScreen';
 import BrandingSetupScreen from '../screens/BrandingSetupScreen';
 import PrinterSetupScreen from '../screens/PrinterSetupScreen';
 import StaffManagementScreen from '../screens/StaffManagementScreen';
+import ToppingsSetupScreen from '../screens/ToppingsSetupScreen';
 
 import type {
   RootStackParamList,
@@ -67,6 +68,7 @@ function SettingsStackNav() {
       <SettingsStack.Screen name="SettingsHome" component={SettingsHomeScreen} options={{title: 'Settings'}} />
       <SettingsStack.Screen name="BrandingSetup" component={BrandingSetupScreen} options={{title: 'Branding'}} />
       <SettingsStack.Screen name="PrinterSetup" component={PrinterSetupScreen} options={{title: 'Printers'}} />
+      <SettingsStack.Screen name="ToppingsSetup" component={ToppingsSetupScreen} options={{title: 'Toppings'}} />
       <SettingsStack.Screen name="StaffManagement" component={StaffManagementScreen} options={{title: 'Staff'}} />
     </SettingsStack.Navigator>
   );

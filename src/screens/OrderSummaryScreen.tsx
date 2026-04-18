@@ -7,7 +7,7 @@ import {useDraftOrderStore} from '../stores/draftOrderStore';
 import {useAuthStore} from '../stores/authStore';
 import * as settingsRepo from '../data/repositories/settingsRepository';
 import * as orderRepo from '../data/repositories/orderRepository';
-import {calcTotals} from '../utils/orderCalculations';
+import {calcTotals, lineSubtotal, effectiveUnitPrice} from '../utils/orderCalculations';
 import type {PaymentMethod} from '../domain/models';
 import {PAYMENT_LABELS} from '../domain/models';
 import type {OrderStackParamList} from '../navigation/types';
@@ -35,13 +35,14 @@ export default function OrderSummaryScreen() {
   const place = async () => {
     setBusy(true);
     try {
-      const items = lines.map(l => ({
+      const payload = lines.map(l => ({
         itemName: l.itemName,
         quantity: l.quantity,
         unitPrice: l.unitPrice,
+        toppings: l.toppings.map(t => ({name: t.name, price: t.price})),
       }));
       const created = await orderRepo.createOrder(
-        items,
+        payload,
         PAYMENT_LABELS[payment],
         userId,
         totals.subtotal,
@@ -62,9 +63,19 @@ export default function OrderSummaryScreen() {
         Checkout
       </Text>
       {lines.map(l => (
-        <Text key={l.tempId} variant="bodyMedium">
-          {l.quantity}× {l.itemName} — ${(l.quantity * l.unitPrice).toFixed(2)}
-        </Text>
+        <View key={l.tempId} style={styles.lineBlock}>
+          <Text variant="bodyMedium">
+            {l.quantity}× {l.itemName} — ${lineSubtotal(l).toFixed(2)}
+          </Text>
+          <Text variant="bodySmall" style={{opacity: 0.75}}>
+            Base ${l.unitPrice.toFixed(2)} · with toppings ${effectiveUnitPrice(l).toFixed(2)} each
+          </Text>
+          {l.toppings.length > 0 ? (
+            <Text variant="bodySmall" style={{opacity: 0.85}}>
+              {l.toppings.map(t => (t.price > 0 ? `${t.name} (+$${t.price.toFixed(2)})` : `${t.name} (free)`)).join(' · ')}
+            </Text>
+          ) : null}
+        </View>
       ))}
       <Text style={styles.mt}>Subtotal ${totals.subtotal.toFixed(2)}</Text>
       <Text>
@@ -93,6 +104,7 @@ export default function OrderSummaryScreen() {
 const styles = StyleSheet.create({
   root: {flex: 1},
   content: {padding: 20, paddingBottom: 40},
+  lineBlock: {marginBottom: 12},
   mt: {marginTop: 16},
   btn: {marginTop: 24, borderRadius: 12},
 });

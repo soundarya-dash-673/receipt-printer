@@ -1,11 +1,23 @@
 import type {SQLiteDatabase} from 'react-native-sqlite-storage';
 import {getDatabase} from '../db/database';
-import type {OrderEntity, OrderItemEntity} from '../../domain/models';
+import type {OrderEntity, OrderItemEntity, OrderItemToppingEntity} from '../../domain/models';
 import {v4 as uuidv4} from 'uuid';
+
+export interface OrderLineInput {
+  itemName: string;
+  quantity: number;
+  /** Base unit price */
+  unitPrice: number;
+  toppings: Array<{name: string; price: number}>;
+}
+
+export interface OrderItemWithToppings extends OrderItemEntity {
+  toppings: OrderItemToppingEntity[];
+}
 
 export interface OrderWithItems {
   order: OrderEntity;
-  items: OrderItemEntity[];
+  items: OrderItemWithToppings[];
 }
 
 function mapOrder(r: Record<string, unknown>): OrderEntity {
@@ -31,13 +43,34 @@ function mapItem(r: Record<string, unknown>): OrderItemEntity {
   };
 }
 
+function mapTopping(r: Record<string, unknown>): OrderItemToppingEntity {
+  return {
+    id: r.id as string,
+    orderItemId: r.order_item_id as string,
+    toppingName: r.topping_name as string,
+    price: r.price as number,
+  };
+}
+
 async function nextOrderNumber(db: SQLiteDatabase): Promise<number> {
   const [res] = await db.executeSql('SELECT COALESCE(MAX(order_number), 0) + 1 as n FROM orders;');
   return res.rows.item(0).n as number;
 }
 
+async function loadToppingsForItem(db: SQLiteDatabase, orderItemId: string): Promise<OrderItemToppingEntity[]> {
+  const [res] = await db.executeSql(
+    'SELECT * FROM order_item_toppings WHERE order_item_id = ? ORDER BY rowid;',
+    [orderItemId],
+  );
+  const out: OrderItemToppingEntity[] = [];
+  for (let i = 0; i < res.rows.length; i++) {
+    out.push(mapTopping(res.rows.item(i)));
+  }
+  return out;
+}
+
 export async function createOrder(
-  items: Array<{itemName: string; quantity: number; unitPrice: number}>,
+  lines: OrderLineInput[],
   paymentMethod: string,
   createdByUserId: string | null,
   subtotal: number,
@@ -58,19 +91,36 @@ export async function createOrder(
       [orderId, orderNumber, totalAmount, taxAmount, paymentMethod, now, createdByUserId, note],
     );
 
-    const itemRows: OrderItemEntity[] = [];
-    for (const line of items) {
+    const itemRows: OrderItemWithToppings[] = [];
+    for (const line of lines) {
       const itemId = uuidv4();
       await db.executeSql(
         `INSERT INTO order_items (id, order_id, item_name, quantity, price) VALUES (?, ?, ?, ?, ?);`,
         [itemId, orderId, line.itemName, line.quantity, line.unitPrice],
       );
+
+      const toppings: OrderItemToppingEntity[] = [];
+      for (const t of line.toppings) {
+        const tid = uuidv4();
+        await db.executeSql(
+          `INSERT INTO order_item_toppings (id, order_item_id, topping_name, price) VALUES (?, ?, ?, ?);`,
+          [tid, itemId, t.name, t.price],
+        );
+        toppings.push({
+          id: tid,
+          orderItemId: itemId,
+          toppingName: t.name,
+          price: t.price,
+        });
+      }
+
       itemRows.push({
         id: itemId,
         orderId,
         itemName: line.itemName,
         quantity: line.quantity,
         price: line.unitPrice,
+        toppings,
       });
     }
 
@@ -103,9 +153,11 @@ export async function getOrderById(id: string): Promise<OrderWithItems | null> {
   }
   const order = mapOrder(oRes.rows.item(0));
   const [iRes] = await db.executeSql('SELECT * FROM order_items WHERE order_id = ? ORDER BY rowid;', [id]);
-  const items: OrderItemEntity[] = [];
+  const items: OrderItemWithToppings[] = [];
   for (let i = 0; i < iRes.rows.length; i++) {
-    items.push(mapItem(iRes.rows.item(i)));
+    const ent = mapItem(iRes.rows.item(i));
+    const toppings = await loadToppingsForItem(db, ent.id);
+    items.push({...ent, toppings});
   }
   return {order, items};
 }

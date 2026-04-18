@@ -1,6 +1,17 @@
 import type {OrderWithItems} from '../data/repositories/orderRepository';
 import type {Settings} from '../domain/models';
 
+export interface ReceiptLine {
+  name: string;
+  qty: number;
+  /** Base unit price (menu item only) */
+  baseUnitPrice: number;
+  toppings: Array<{name: string; price: number}>;
+  /** Base + sum(topping prices) per unit */
+  effectiveUnitPrice: number;
+  lineTotal: number;
+}
+
 export interface ReceiptPayload {
   shopName: string;
   logoPath: string | null;
@@ -9,7 +20,7 @@ export interface ReceiptPayload {
   orderId: string;
   createdAt: string;
   taxPercentage: number;
-  items: Array<{name: string; qty: number; unitPrice: number; lineTotal: number}>;
+  items: ReceiptLine[];
   subtotal: number;
   taxAmount: number;
   totalAmount: number;
@@ -18,12 +29,20 @@ export interface ReceiptPayload {
 }
 
 export function buildReceiptPayload(order: OrderWithItems, settings: Settings): ReceiptPayload {
-  const items = order.items.map(i => ({
-    name: i.itemName,
-    qty: i.quantity,
-    unitPrice: i.price,
-    lineTotal: i.quantity * i.price,
-  }));
+  const items: ReceiptLine[] = order.items.map(i => {
+    const toppings = i.toppings.map(t => ({name: t.toppingName, price: t.price}));
+    const toppingSum = toppings.reduce((s, t) => s + t.price, 0);
+    const effectiveUnitPrice = i.price + toppingSum;
+    const lineTotal = i.quantity * effectiveUnitPrice;
+    return {
+      name: i.itemName,
+      qty: i.quantity,
+      baseUnitPrice: i.price,
+      toppings,
+      effectiveUnitPrice,
+      lineTotal,
+    };
+  });
   const subtotal = items.reduce((s, i) => s + i.lineTotal, 0);
   return {
     shopName: settings.shopName,
@@ -53,18 +72,31 @@ export function buildReceiptHTML(payload: ReceiptPayload): string {
   const timeStr = date.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'});
 
   const itemRows = payload.items
-    .map(
-      row => `
+    .map(row => {
+      const toppingRows =
+        row.toppings.length > 0
+          ? row.toppings
+              .map(
+                t => `
+      <tr class="topping-row">
+        <td colspan="2" class="topping-name">+ ${escapeHtml(t.name)}</td>
+        <td class="topping-price">${t.price <= 0 ? 'FREE' : `$${t.price.toFixed(2)}`}</td>
+      </tr>`,
+              )
+              .join('')
+          : '';
+      return `
       <tr>
         <td class="item-name">${escapeHtml(row.name)}</td>
         <td class="item-qty">x${row.qty}</td>
         <td class="item-price">$${row.lineTotal.toFixed(2)}</td>
       </tr>
       <tr class="sub-row">
-        <td colspan="2" class="item-unit">$${row.unitPrice.toFixed(2)} each</td>
+        <td colspan="2" class="item-unit">Base $${row.baseUnitPrice.toFixed(2)} each · with toppings $${row.effectiveUnitPrice.toFixed(2)} each</td>
         <td></td>
-      </tr>`,
-    )
+      </tr>
+      ${toppingRows}`;
+    })
     .join('');
 
   const noteSection = payload.note
@@ -112,6 +144,9 @@ export function buildReceiptHTML(payload: ReceiptPayload): string {
     .item-price { font-size: 13px; text-align: right; font-weight: bold; }
     .sub-row td { padding-bottom: 6px; }
     .item-unit { font-size: 10px; color: #888; }
+    .topping-row td { font-size: 11px; padding: 2px 0 2px 8px; color: #333; }
+    .topping-name { font-style: italic; }
+    .topping-price { text-align: right; color: #2D8CFF; font-weight: 600; }
     .totals-table td { padding: 3px 0; font-size: 13px; }
     .totals-table .label { color: #444; }
     .totals-table .value { text-align: right; font-weight: bold; }
@@ -165,7 +200,13 @@ export function buildReceiptHTML(payload: ReceiptPayload): string {
 
 export function buildESCPOSData(payload: ReceiptPayload): {
   header: string;
-  items: Array<{name: string; qty: number; price: string; unitPrice: string}>;
+  lines: Array<{
+    title: string;
+    qty: number;
+    baseLine: string;
+    toppingLines: Array<{text: string}>;
+    lineTotal: string;
+  }>;
   subtotal: string;
   tax: string;
   total: string;
@@ -183,11 +224,14 @@ export function buildESCPOSData(payload: ReceiptPayload): {
 
   return {
     header: payload.shopName,
-    items: payload.items.map(i => ({
-      name: i.name,
+    lines: payload.items.map(i => ({
+      title: i.name,
       qty: i.qty,
-      price: `$${i.lineTotal.toFixed(2)}`,
-      unitPrice: `$${i.unitPrice.toFixed(2)}`,
+      baseLine: `Base $${i.baseUnitPrice.toFixed(2)} ea / eff $${i.effectiveUnitPrice.toFixed(2)} ea x${i.qty}`,
+      toppingLines: i.toppings.map(t => ({
+        text: `  + ${t.name}: ${t.price <= 0 ? 'FREE' : '$' + t.price.toFixed(2)}`,
+      })),
+      lineTotal: `$${i.lineTotal.toFixed(2)}`,
     })),
     subtotal: `$${payload.subtotal.toFixed(2)}`,
     tax: `$${payload.taxAmount.toFixed(2)} (${payload.taxPercentage}%)`,

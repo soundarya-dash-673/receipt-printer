@@ -1,12 +1,14 @@
-import React, {useState} from 'react';
-import {View, FlatList, StyleSheet} from 'react-native';
-import {Text, Button, IconButton, TextInput, FAB, Portal, Dialog, useTheme} from 'react-native-paper';
-import {useNavigation} from '@react-navigation/native';
+import React, {useState, useCallback} from 'react';
+import {View, FlatList, StyleSheet, ScrollView} from 'react-native';
+import {Text, Button, IconButton, TextInput, FAB, Portal, Dialog, useTheme, Chip, Checkbox} from 'react-native-paper';
+import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useDraftOrderStore} from '../stores/draftOrderStore';
 import * as settingsRepo from '../data/repositories/settingsRepository';
-import {calcTotals} from '../utils/orderCalculations';
+import * as toppingRepo from '../data/repositories/toppingCatalogRepository';
+import {calcTotals, effectiveUnitPrice, lineSubtotal} from '../utils/orderCalculations';
 import type {OrderStackParamList} from '../navigation/types';
+import type {DraftLineItem, ToppingCatalogItem} from '../domain/models';
 
 type Nav = NativeStackNavigationProp<OrderStackParamList, 'NewOrder'>;
 
@@ -16,6 +18,7 @@ export default function NewOrderScreen() {
   const lines = useDraftOrderStore(s => s.lines);
   const addLine = useDraftOrderStore(s => s.addLine);
   const updateLine = useDraftOrderStore(s => s.updateLine);
+  const setLineToppings = useDraftOrderStore(s => s.setLineToppings);
   const removeLine = useDraftOrderStore(s => s.removeLine);
   const note = useDraftOrderStore(s => s.note);
   const setNote = useDraftOrderStore(s => s.setNote);
@@ -26,9 +29,24 @@ export default function NewOrderScreen() {
   const [price, setPrice] = useState('');
   const [qty, setQty] = useState('1');
 
+  const [catalog, setCatalog] = useState<ToppingCatalogItem[]>([]);
+  /** Which line’s topping picker is open (live data from `lines`) */
+  const [toppingsLineId, setToppingsLineId] = useState<string | null>(null);
+  const topDialogLine = toppingsLineId ? lines.find(l => l.tempId === toppingsLineId) ?? null : null;
+
   React.useEffect(() => {
     settingsRepo.getSettings().then(s => setTaxPct(s.taxPercentage));
   }, []);
+
+  const loadCatalog = useCallback(async () => {
+    setCatalog(await toppingRepo.getAllToppings());
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCatalog();
+    }, [loadCatalog]),
+  );
 
   const totals = calcTotals(lines, taxPct);
 
@@ -45,6 +63,17 @@ export default function NewOrderScreen() {
     setDialog(false);
   };
 
+  const toggleTopping = (line: DraftLineItem, cat: ToppingCatalogItem) => {
+    const sel = new Set(line.toppings.map(t => t.catalogId));
+    let next = [...line.toppings];
+    if (sel.has(cat.id)) {
+      next = next.filter(t => t.catalogId !== cat.id);
+    } else {
+      next = [...next, {catalogId: cat.id, name: cat.name, price: cat.price}];
+    }
+    setLineToppings(line.tempId, next);
+  };
+
   return (
     <View style={[styles.root, {backgroundColor: theme.colors.background}]}>
       <Text variant="titleMedium" style={styles.pad}>
@@ -54,16 +83,31 @@ export default function NewOrderScreen() {
         data={lines}
         keyExtractor={l => l.tempId}
         ListEmptyComponent={
-          <Text style={styles.empty}>Tap + to add items (name & price).</Text>
+          <Text style={styles.empty}>Tap + to add items (name & base price), then add toppings per line.</Text>
         }
         renderItem={({item}) => (
           <View style={styles.row}>
             <View style={{flex: 1}}>
               <Text variant="titleSmall">{item.itemName}</Text>
               <Text variant="bodySmall" style={{opacity: 0.7}}>
-                ${item.unitPrice.toFixed(2)} × {item.quantity}
+                Base ${item.unitPrice.toFixed(2)} × {item.quantity} · Line ${lineSubtotal(item).toFixed(2)}
               </Text>
+              {item.toppings.length > 0 ? (
+                <View style={styles.chips}>
+                  {item.toppings.map(t => (
+                    <Chip key={t.catalogId} compact style={styles.chip} textStyle={{fontSize: 11}}>
+                      {t.name}
+                      {t.price > 0 ? ` +$${t.price.toFixed(2)}` : ' (free)'}
+                    </Chip>
+                  ))}
+                </View>
+              ) : null}
             </View>
+            <IconButton
+              icon="food-variant"
+              accessibilityLabel="Toppings"
+              onPress={() => setToppingsLineId(item.tempId)}
+            />
             <IconButton
               icon="minus"
               onPress={() =>
@@ -113,7 +157,7 @@ export default function NewOrderScreen() {
           <Dialog.Content>
             <TextInput label="Name" value={name} onChangeText={setName} mode="outlined" />
             <TextInput
-              label="Unit price"
+              label="Base unit price"
               value={price}
               onChangeText={setPrice}
               keyboardType="decimal-pad"
@@ -135,6 +179,38 @@ export default function NewOrderScreen() {
           </Dialog.Actions>
         </Dialog>
       </Portal>
+
+      <Portal>
+        <Dialog visible={!!toppingsLineId} onDismiss={() => setToppingsLineId(null)}>
+          <Dialog.Title>Toppings</Dialog.Title>
+          <Dialog.Content style={{maxHeight: 400}}>
+            <ScrollView>
+              {topDialogLine ? (
+                <>
+                  <Text variant="bodySmall" style={{marginBottom: 8, opacity: 0.8}}>
+                    {topDialogLine.itemName} — eff. ${effectiveUnitPrice(topDialogLine).toFixed(2)} each with selected
+                    toppings
+                  </Text>
+                  {catalog.map(cat => {
+                    const checked = topDialogLine.toppings.some(t => t.catalogId === cat.id);
+                    return (
+                      <Checkbox.Item
+                        key={cat.id}
+                        label={`${cat.name}${cat.price > 0 ? ` (+$${cat.price.toFixed(2)})` : ' (free)'}`}
+                        status={checked ? 'checked' : 'unchecked'}
+                        onPress={() => toggleTopping(topDialogLine, cat)}
+                      />
+                    );
+                  })}
+                </>
+              ) : null}
+            </ScrollView>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setToppingsLineId(null)}>Done</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </View>
   );
 }
@@ -144,12 +220,14 @@ const styles = StyleSheet.create({
   pad: {marginBottom: 8},
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 8,
     marginBottom: 8,
   },
+  chips: {flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6},
+  chip: {height: 28},
   empty: {textAlign: 'center', opacity: 0.5, padding: 24},
   input: {marginBottom: 12, backgroundColor: '#fff'},
   totals: {gap: 4, marginBottom: 12},

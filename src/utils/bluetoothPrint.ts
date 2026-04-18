@@ -118,11 +118,15 @@ export async function printReceiptViaBluetooth(payload: ReceiptPayload): Promise
     await BluetoothEscposPrinter.printText('--------------------------------\n', {});
 
     await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.LEFT);
-    for (const item of data.items) {
-      const nameLine = truncate(item.name, 20);
-      const qtyPrice = `${item.qty}x ${item.unitPrice}`.padStart(12);
-      const lineTotal = item.price.padStart(8);
-      await BluetoothEscposPrinter.printText(`${nameLine.padEnd(20)}${qtyPrice}${lineTotal}\n`, {});
+    for (const line of data.lines) {
+      const nameLine = truncate(line.title, 18);
+      await BluetoothEscposPrinter.printText(`${nameLine} x${line.qty}\n`, {});
+      await BluetoothEscposPrinter.printText(`${truncate(line.baseLine, 42)}\n`, {});
+      for (const t of line.toppingLines) {
+        await BluetoothEscposPrinter.printText(`${truncate(t.text, 42)}\n`, {});
+      }
+      await BluetoothEscposPrinter.printText(`Line: ${line.lineTotal}\n`, {});
+      await BluetoothEscposPrinter.printText('--------------------------------\n', {});
     }
 
     await BluetoothEscposPrinter.printText('--------------------------------\n', {});

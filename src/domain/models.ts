@@ -24,7 +24,26 @@ export interface OrderItemEntity {
   orderId: string;
   itemName: string;
   quantity: number;
+  /** Base unit price (before toppings) */
   price: number;
+}
+
+/** Snapshot of a topping on a saved order line */
+export interface OrderItemToppingEntity {
+  id: string;
+  orderItemId: string;
+  toppingName: string;
+  /** 0 = free */
+  price: number;
+}
+
+export interface ToppingCatalogItem {
+  id: string;
+  name: string;
+  /** 0 = free topping */
+  price: number;
+  sortOrder: number;
+  createdAt: string;
 }
 
 export interface Settings {
@@ -41,12 +60,22 @@ export interface PrinterRecord {
   bluetoothAddress: string;
 }
 
+/** Selected topping on a draft line (prices copied from catalog at selection time) */
+export interface DraftTopping {
+  catalogId: string;
+  name: string;
+  /** 0 = free */
+  price: number;
+}
+
 /** Draft line before order is persisted */
 export interface DraftLineItem {
   tempId: string;
   itemName: string;
   quantity: number;
+  /** Base unit price only; toppings billed per unit */
   unitPrice: number;
+  toppings: DraftTopping[];
 }
 
 export type PaymentMethod = 'cash' | 'card' | 'other';

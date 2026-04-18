@@ -19,6 +19,7 @@ export type SettingsStackParamList = {
   SettingsHome: undefined;
   BrandingSetup: undefined;
   PrinterSetup: undefined;
+  ToppingsSetup: undefined;
   StaffManagement: undefined;
 };
 
