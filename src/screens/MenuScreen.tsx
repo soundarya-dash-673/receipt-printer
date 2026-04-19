@@ -24,6 +24,7 @@ import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useApp, MenuItem} from '../context/AppContext';
 import {MenuStackParamList} from '../navigation/AppNavigator';
+import {sortMenuCategories} from '../utils/menuCategories';
 
 type NavigationProp = NativeStackNavigationProp<MenuStackParamList, 'MenuList'>;
 
@@ -37,8 +38,8 @@ export default function MenuScreen() {
   const [deleteTarget, setDeleteTarget] = useState<MenuItem | null>(null);
 
   const categories = useMemo(() => {
-    const cats = Array.from(new Set(menuItems.map(m => m.category)));
-    return ['All', ...cats.sort()];
+    const cats = new Set(menuItems.map(m => m.category));
+    return ['All', ...sortMenuCategories(cats)];
   }, [menuItems]);
 
   const filtered = useMemo(() => {
@@ -68,7 +69,17 @@ export default function MenuScreen() {
     ({item}: {item: MenuItem}) => (
       <View style={[styles.card, {backgroundColor: theme.colors.surface}]}>
         <View style={styles.cardLeft}>
-          <View style={[styles.categoryDot, {backgroundColor: theme.colors.primary}]} />
+          <View
+            style={[
+              styles.categoryDot,
+              {
+                backgroundColor:
+                  item.category === 'Toppings'
+                    ? theme.colors.tertiary
+                    : theme.colors.primary,
+              },
+            ]}
+          />
           <View style={styles.cardInfo}>
             <Text variant="titleMedium" style={styles.itemName}>
               {item.name}

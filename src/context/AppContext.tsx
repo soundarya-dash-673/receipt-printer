@@ -238,6 +238,27 @@ export function AppProvider({children}: {children: ReactNode}) {
             {id: uuidv4(), name: 'Chicken Burger', price: 9.99, category: 'Mains'},
             {id: uuidv4(), name: 'Caesar Salad', price: 7.49, category: 'Starters'},
             {id: uuidv4(), name: 'French Fries', price: 3.99, category: 'Sides'},
+            {
+              id: uuidv4(),
+              name: 'Extra cheese (side)',
+              price: 1.5,
+              category: 'Toppings',
+              description: 'Add to any dish',
+            },
+            {
+              id: uuidv4(),
+              name: 'Garlic dip',
+              price: 1.25,
+              category: 'Toppings',
+              description: '2 oz cup',
+            },
+            {
+              id: uuidv4(),
+              name: 'Jalapeños',
+              price: 0,
+              category: 'Toppings',
+              description: 'Free add-on portion',
+            },
             {id: uuidv4(), name: 'Coca Cola', price: 2.49, category: 'Drinks'},
             {id: uuidv4(), name: 'Mango Juice', price: 2.99, category: 'Drinks'},
           ];

@@ -25,7 +25,15 @@ import {MenuStackParamList} from '../navigation/AppNavigator';
 type RouteType = RouteProp<MenuStackParamList, 'MenuItemForm'>;
 type NavigationProp = NativeStackNavigationProp<MenuStackParamList, 'MenuItemForm'>;
 
-const SUGGESTED_CATEGORIES = ['Starters', 'Mains', 'Sides', 'Desserts', 'Drinks', 'Specials'];
+const SUGGESTED_CATEGORIES = [
+  'Starters',
+  'Mains',
+  'Sides',
+  'Toppings',
+  'Desserts',
+  'Drinks',
+  'Specials',
+];
 
 export default function MenuItemFormScreen() {
   const theme = useTheme();

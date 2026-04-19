@@ -1,4 +1,4 @@
-import React, {useState, useMemo} from 'react';
+import React, {useState, useMemo, useEffect} from 'react';
 import {
   View,
   FlatList,
@@ -22,6 +22,7 @@ import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useApp, CartItem, MenuItem, unitPriceForLine} from '../context/AppContext';
 import {formatToppingPriceLabel} from '../utils/toppingPrice';
+import {sortMenuCategories} from '../utils/menuCategories';
 import {CartStackParamList} from '../navigation/AppNavigator';
 
 type NavigationProp = NativeStackNavigationProp<CartStackParamList, 'Cart'>;
@@ -47,14 +48,31 @@ export default function CartScreen() {
   const [showMenu, setShowMenu] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [menuSearch, setMenuSearch] = useState('');
+  const [quickCategory, setQuickCategory] = useState<string>('All');
 
-  const filteredMenu = useMemo(
-    () =>
-      menuItems.filter(m =>
-        m.name.toLowerCase().includes(menuSearch.toLowerCase()),
-      ),
-    [menuItems, menuSearch],
-  );
+  const quickCategories = useMemo(() => {
+    const cats = new Set(menuItems.map(m => m.category));
+    return ['All', ...sortMenuCategories(cats)];
+  }, [menuItems]);
+
+  const filteredMenu = useMemo(() => {
+    const q = menuSearch.toLowerCase();
+    return menuItems.filter(m => {
+      const matchesSearch =
+        m.name.toLowerCase().includes(q) ||
+        m.category.toLowerCase().includes(q);
+      const matchesCat =
+        quickCategory === 'All' || m.category === quickCategory;
+      return matchesSearch && matchesCat;
+    });
+  }, [menuItems, menuSearch, quickCategory]);
+
+  useEffect(() => {
+    if (showMenu) {
+      setQuickCategory('All');
+      setMenuSearch('');
+    }
+  }, [showMenu]);
 
   const handlePlaceOrder = () => {
     if (cartItems.length === 0) {return;}
@@ -142,14 +160,49 @@ export default function CartScreen() {
           <MaterialCommunityIcons name="food" size={size} color={theme.colors.primary} />
         )}
         actions={[{label: 'Close', onPress: () => setShowMenu(false)}]}>
-        Tap an item — if it has toppings, you&apos;ll choose them before it&apos;s added.
+        Pick a category (e.g. Toppings), then tap an item — customizable dishes open the topping picker.
       </Banner>
 
       {/* Quick Add Menu Panel */}
       {showMenu && (
         <View style={[styles.quickAdd, {backgroundColor: theme.colors.surface}]}>
+          <Text variant="labelMedium" style={[styles.quickFilterLabel, {color: theme.colors.secondary}]}>
+            Category
+          </Text>
+          <ScrollView
+            horizontal
+            nestedScrollEnabled
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            style={styles.quickCategoryScroll}
+            contentContainerStyle={styles.quickCategoryRow}>
+            {quickCategories.map(cat => (
+              <Chip
+                key={cat}
+                mode="flat"
+                compact
+                selected={quickCategory === cat}
+                showSelectedOverlay
+                onPress={() => setQuickCategory(cat)}
+                style={[
+                  styles.quickCatChip,
+                  {
+                    borderWidth: quickCategory === cat ? 0 : 1,
+                    borderColor: theme.colors.outline ?? '#E8DDD4',
+                    backgroundColor:
+                      quickCategory === cat ? theme.colors.primary : theme.colors.surface,
+                  },
+                ]}
+                textStyle={{
+                  fontWeight: quickCategory === cat ? '600' : '500',
+                  color: quickCategory === cat ? '#fff' : theme.colors.onSurface,
+                }}>
+                {cat}
+              </Chip>
+            ))}
+          </ScrollView>
           <TextInput
-            placeholder="Search..."
+            placeholder="Search menu..."
             value={menuSearch}
             onChangeText={setMenuSearch}
             dense
@@ -165,6 +218,7 @@ export default function CartScreen() {
             contentContainerStyle={styles.quickChips}
             renderItem={({item}: {item: MenuItem}) => {
               const customizable = !!(item.toppings && item.toppings.length > 0);
+              const isToppingsCategory = item.category === 'Toppings';
               return (
                 <TouchableOpacity
                   style={[styles.quickChip, {borderColor: theme.colors.primary}]}
@@ -185,6 +239,10 @@ export default function CartScreen() {
                   {customizable ? (
                     <Text variant="labelSmall" style={styles.quickChipHint}>
                       + toppings
+                    </Text>
+                  ) : isToppingsCategory ? (
+                    <Text variant="labelSmall" style={styles.quickChipHint}>
+                      add-on
                     </Text>
                   ) : null}
                 </TouchableOpacity>
@@ -421,7 +479,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  quickSearch: {marginBottom: 8, marginTop: 8},
+  quickFilterLabel: {marginTop: 4, marginBottom: 6},
+  quickCategoryScroll: {flexGrow: 0, marginBottom: 8},
+  quickCategoryRow: {flexDirection: 'row', alignItems: 'center', paddingRight: 8},
+  quickCatChip: {marginRight: 8, height: 32},
+  quickSearch: {marginBottom: 8, marginTop: 4},
   quickChipList: {minHeight: 72, maxHeight: 88},
   quickChips: {paddingVertical: 4},
   quickChip: {
