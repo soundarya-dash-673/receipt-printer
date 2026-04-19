@@ -16,6 +16,8 @@ export interface MenuTopping {
   id: string;
   name: string;
   price: number;
+  /** Pre-checked when ordering; use with price 0 for standard inclusions, or with a price for paid defaults. */
+  includedByDefault?: boolean;
 }
 
 /** Snapshot stored on cart / order lines (immutable after add). */
@@ -87,6 +89,7 @@ function migrateCartItem(raw: any, index: number): CartItem {
     toppings: (raw.menuItem?.toppings ?? []).map((t: MenuTopping) => ({
       ...t,
       price: Number(t.price) || 0,
+      includedByDefault: !!t.includedByDefault,
     })),
   };
   const selectedToppings: SelectedTopping[] = (raw.selectedToppings ?? []).map(
@@ -108,6 +111,7 @@ function normalizeMenuItem(m: MenuItem): MenuItem {
   const tops = (m.toppings ?? []).map(t => ({
     ...t,
     price: Number(t.price) || 0,
+    includedByDefault: !!t.includedByDefault,
   }));
   return {...m, toppings: tops};
 }
@@ -181,7 +185,9 @@ export function AppProvider({children}: {children: ReactNode}) {
           const parsed: MenuItem[] = JSON.parse(menuRaw);
           setMenuItems(parsed.map(normalizeMenuItem));
         } else {
-          const cheeseId = uuidv4();
+          const sauceId = uuidv4();
+          const mozzId = uuidv4();
+          const cheeseExtraId = uuidv4();
           const olivesId = uuidv4();
           const pepId = uuidv4();
           const seed: MenuItem[] = [
@@ -191,9 +197,36 @@ export function AppProvider({children}: {children: ReactNode}) {
               price: 12.99,
               category: 'Mains',
               toppings: [
-                {id: cheeseId, name: 'Extra cheese', price: 1.5},
-                {id: olivesId, name: 'Olives', price: 0},
-                {id: pepId, name: 'Pepperoni', price: 2.0},
+                {
+                  id: sauceId,
+                  name: 'Classic tomato sauce',
+                  price: 0,
+                  includedByDefault: true,
+                },
+                {
+                  id: mozzId,
+                  name: 'Fresh mozzarella',
+                  price: 0,
+                  includedByDefault: true,
+                },
+                {
+                  id: cheeseExtraId,
+                  name: 'Extra cheese',
+                  price: 1.5,
+                  includedByDefault: false,
+                },
+                {
+                  id: olivesId,
+                  name: 'Olives',
+                  price: 0,
+                  includedByDefault: false,
+                },
+                {
+                  id: pepId,
+                  name: 'Pepperoni',
+                  price: 2.0,
+                  includedByDefault: false,
+                },
               ],
             },
             {id: uuidv4(), name: 'Chicken Burger', price: 9.99, category: 'Mains'},

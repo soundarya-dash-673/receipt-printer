@@ -42,10 +42,15 @@ export default function MenuScreen() {
   }, [menuItems]);
 
   const filtered = useMemo(() => {
+    const q = search.toLowerCase();
     return menuItems.filter(item => {
+      const toppingMatch = (item.toppings ?? []).some(top =>
+        top.name.toLowerCase().includes(q),
+      );
       const matchesSearch =
-        item.name.toLowerCase().includes(search.toLowerCase()) ||
-        item.category.toLowerCase().includes(search.toLowerCase());
+        item.name.toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q) ||
+        toppingMatch;
       const matchesCategory =
         selectedCategory === 'All' || item.category === selectedCategory;
       return matchesSearch && matchesCategory;
@@ -74,6 +79,15 @@ export default function MenuScreen() {
             {item.description ? (
               <Text variant="bodySmall" style={styles.description} numberOfLines={1}>
                 {item.description}
+              </Text>
+            ) : null}
+            {item.toppings?.some(t => t.includedByDefault) ? (
+              <Text variant="labelSmall" style={styles.includesLine} numberOfLines={2}>
+                Includes:{' '}
+                {item.toppings
+                  .filter(t => t.includedByDefault)
+                  .map(t => t.name)
+                  .join(', ')}
               </Text>
             ) : null}
           </View>
@@ -298,6 +312,7 @@ const styles = StyleSheet.create({
   itemName: {fontWeight: '600'},
   categoryText: {marginTop: 2},
   description: {marginTop: 2, color: '#757575'},
+  includesLine: {marginTop: 4, color: '#616161', lineHeight: 16},
   cardRight: {alignItems: 'flex-end', justifyContent: 'center'},
   price: {fontWeight: '700', fontSize: 16, marginBottom: 6},
   actionsRow: {flexDirection: 'row', alignItems: 'center'},

@@ -14,6 +14,7 @@ import {
   HelperText,
   Chip,
   IconButton,
+  Switch,
 } from 'react-native-paper';
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -66,6 +67,7 @@ export default function MenuItemFormScreen() {
         id: t.id,
         name: t.name.trim(),
         price: Math.max(0, Math.round((parseFloat(String(t.price)) || 0) * 100) / 100),
+        includedByDefault: !!t.includedByDefault,
       }));
     const data = {
       name: name.trim(),
@@ -83,7 +85,10 @@ export default function MenuItemFormScreen() {
   };
 
   const addToppingRow = () => {
-    setToppings(prev => [...prev, {id: uuidv4(), name: '', price: 0}]);
+    setToppings(prev => [
+      ...prev,
+      {id: uuidv4(), name: '', price: 0, includedByDefault: false},
+    ]);
   };
 
   const updateTopping = (index: number, patch: Partial<MenuTopping>) => {
@@ -176,7 +181,8 @@ export default function MenuItemFormScreen() {
           Toppings (optional)
         </Text>
         <Text variant="bodySmall" style={styles.toppingsHint}>
-          Set price to 0 for a free topping. Customers choose these when adding the item to the order.
+          Set price to $0 for free options. Turn on &quot;On by default&quot; for standard inclusions
+          (often $0); extras stay off until the customer adds them.
         </Text>
 
         {toppings.map((t, index) => (
@@ -206,6 +212,21 @@ export default function MenuItemFormScreen() {
                 style={styles.toppingPrice}
                 left={<TextInput.Icon icon="cash" />}
               />
+              <View style={styles.defaultSwitchRow}>
+                <View style={styles.defaultSwitchText}>
+                  <Text variant="bodySmall" style={{color: theme.colors.onSurface}}>
+                    On by default
+                  </Text>
+                  <Text variant="labelSmall" style={{color: theme.colors.onSurfaceVariant}}>
+                    Pre-selected when ordering (uncheck extras)
+                  </Text>
+                </View>
+                <Switch
+                  value={!!t.includedByDefault}
+                  onValueChange={v => updateTopping(index, {includedByDefault: v})}
+                  color={theme.colors.primary}
+                />
+              </View>
             </View>
             <IconButton
               icon="close"
@@ -258,9 +279,17 @@ const styles = StyleSheet.create({
     padding: 8,
     marginBottom: 10,
   },
-  toppingFields: {flex: 1, flexDirection: 'row', flexWrap: 'wrap'},
-  toppingName: {flex: 1, minWidth: 140, marginRight: 8},
-  toppingPrice: {width: 120},
+  toppingFields: {flex: 1},
+  toppingName: {marginBottom: 8},
+  toppingPrice: {marginBottom: 8},
+  defaultSwitchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingVertical: 4,
+  },
+  defaultSwitchText: {flex: 1, paddingRight: 8},
   toppingRemove: {margin: 0},
   addToppingBtn: {marginBottom: 8},
   buttons: {flexDirection: 'row', gap: 12, marginTop: 24},

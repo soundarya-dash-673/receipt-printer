@@ -1,4 +1,4 @@
-import React, {useMemo, useState, useCallback} from 'react';
+import React, {useMemo, useState, useCallback, useLayoutEffect} from 'react';
 import {View, ScrollView, StyleSheet} from 'react-native';
 import {Text, Button, Checkbox, useTheme, Divider} from 'react-native-paper';
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
@@ -23,6 +23,17 @@ export default function CustomizeItemScreen() {
 
   const toppingList = menuItem?.toppings ?? [];
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+
+  useLayoutEffect(() => {
+    if (!menuItem?.toppings?.length) {
+      setSelectedIds(new Set());
+      return;
+    }
+    const defaults = menuItem.toppings
+      .filter(t => t.includedByDefault)
+      .map(t => t.id);
+    setSelectedIds(new Set(defaults));
+  }, [menuItem?.id]);
 
   const toggle = useCallback((id: string) => {
     setSelectedIds(prev => {
@@ -52,6 +63,15 @@ export default function CustomizeItemScreen() {
   const unitPrice = menuItem
     ? unitPriceForLine(menuItem, selectedToppings)
     : 0;
+
+  const standardToppings = useMemo(
+    () => toppingList.filter(t => t.includedByDefault),
+    [toppingList],
+  );
+  const extraToppings = useMemo(
+    () => toppingList.filter(t => !t.includedByDefault),
+    [toppingList],
+  );
 
   const handleAdd = () => {
     if (!menuItem) {
@@ -100,33 +120,79 @@ export default function CustomizeItemScreen() {
         {menuItem.name}
       </Text>
       <Text variant="bodySmall" style={[styles.sub, {color: theme.colors.secondary}]}>
-        Base ${menuItem.price.toFixed(2)} · select any toppings
+        Base ${menuItem.price.toFixed(2)} · adjust standard items or add extras
       </Text>
 
       <Divider style={styles.divider} />
 
-      {toppingList.map(t => {
-        const checked = selectedIds.has(t.id);
-        return (
-          <View
-            key={t.id}
-            style={[styles.row, {backgroundColor: theme.colors.surface}]}>
-            <Checkbox
-              status={checked ? 'checked' : 'unchecked'}
-              onPress={() => toggle(t.id)}
-              color={theme.colors.primary}
-            />
-            <View style={styles.rowText}>
-              <Text variant="bodyLarge">{t.name}</Text>
-              <Text
-                variant="labelMedium"
-                style={{color: t.price <= 0 ? theme.colors.tertiary : theme.colors.primary}}>
-                {formatToppingPriceLabel(t.price)}
-              </Text>
-            </View>
-          </View>
-        );
-      })}
+      {standardToppings.length > 0 ? (
+        <>
+          <Text variant="labelLarge" style={[styles.sectionLabel, {color: theme.colors.primary}]}>
+            Standard (included — uncheck to remove)
+          </Text>
+          {standardToppings.map(t => {
+            const checked = selectedIds.has(t.id);
+            return (
+              <View
+                key={t.id}
+                style={[styles.row, {backgroundColor: theme.colors.surface}]}>
+                <Checkbox
+                  status={checked ? 'checked' : 'unchecked'}
+                  onPress={() => toggle(t.id)}
+                  color={theme.colors.primary}
+                />
+                <View style={styles.rowText}>
+                  <Text variant="bodyLarge">{t.name}</Text>
+                  <Text
+                    variant="labelMedium"
+                    style={{
+                      color: Number(t.price) <= 0 ? theme.colors.tertiary : theme.colors.primary,
+                    }}>
+                    {formatToppingPriceLabel(t.price)}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </>
+      ) : null}
+
+      {extraToppings.length > 0 ? (
+        <>
+          <Text
+            variant="labelLarge"
+            style={[
+              styles.sectionLabel,
+              {color: theme.colors.primary, marginTop: standardToppings.length ? 12 : 0},
+            ]}>
+            Extras & add-ons
+          </Text>
+          {extraToppings.map(t => {
+            const checked = selectedIds.has(t.id);
+            return (
+              <View
+                key={t.id}
+                style={[styles.row, {backgroundColor: theme.colors.surface}]}>
+                <Checkbox
+                  status={checked ? 'checked' : 'unchecked'}
+                  onPress={() => toggle(t.id)}
+                  color={theme.colors.primary}
+                />
+                <View style={styles.rowText}>
+                  <Text variant="bodyLarge">{t.name}</Text>
+                  <Text
+                    variant="labelMedium"
+                    style={{
+                      color: Number(t.price) <= 0 ? theme.colors.tertiary : theme.colors.primary,
+                    }}>
+                    {formatToppingPriceLabel(t.price)}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </>
+      ) : null}
 
       <View style={[styles.summary, {backgroundColor: theme.colors.surfaceVariant}]}>
         <Text variant="labelLarge">Unit price</Text>
@@ -163,6 +229,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   rowText: {flex: 1, marginLeft: 4},
+  sectionLabel: {marginBottom: 8, fontWeight: '700'},
   summary: {
     flexDirection: 'row',
     justifyContent: 'space-between',
