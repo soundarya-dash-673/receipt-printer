@@ -143,6 +143,9 @@ export async function printReceiptViaBluetooth(order: Order): Promise<BTResult> 
     await BluetoothEscposPrinter.printText('================================\n', {});
     await BluetoothEscposPrinter.printText(`Order #${data.orderId}\n`, {});
     await BluetoothEscposPrinter.printText(`${data.dateStr}\n`, {});
+    if (data.paymentLabel) {
+      await BluetoothEscposPrinter.printText(`Payment: ${data.paymentLabel}\n`, {});
+    }
     await BluetoothEscposPrinter.printText('--------------------------------\n', {});
 
     // ── Items ──

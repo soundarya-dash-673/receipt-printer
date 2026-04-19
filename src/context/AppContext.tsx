@@ -41,6 +41,8 @@ export interface CartItem {
   selectedToppings: SelectedTopping[];
 }
 
+export type PaymentMethod = 'cash' | 'card';
+
 export interface Order {
   id: string;
   items: CartItem[];
@@ -51,6 +53,8 @@ export interface Order {
   createdAt: string;
   restaurantName: string;
   note?: string;
+  /** Omitted on orders saved before this field existed */
+  paymentMethod?: PaymentMethod;
 }
 
 export interface Settings {
@@ -153,7 +157,7 @@ interface AppContextType {
 
   // Orders
   orders: Order[];
-  placeOrder: (note?: string) => Order;
+  placeOrder: (note?: string, paymentMethod?: PaymentMethod) => Order;
   deleteOrder: (id: string) => void;
   clearAllOrders: () => void;
 
@@ -433,7 +437,7 @@ export function AppProvider({children}: {children: ReactNode}) {
 
   // ── Order Actions ─────────────────────────────────────────────────────────
   const placeOrder = useCallback(
-    (note?: string): Order => {
+    (note?: string, paymentMethod: PaymentMethod = 'cash'): Order => {
       /** Immutable snapshot with numeric topping prices (avoids bad totals from string/coercion bugs). */
       const lineSnapshots: CartItem[] = cartItems.map(ci => ({
         cartLineId: ci.cartLineId,
@@ -464,6 +468,7 @@ export function AppProvider({children}: {children: ReactNode}) {
         createdAt: new Date().toISOString(),
         restaurantName: settings.restaurantName,
         note,
+        paymentMethod,
       };
       setOrders(prev => {
         const updated = [order, ...prev];

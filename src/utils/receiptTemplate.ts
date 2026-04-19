@@ -1,4 +1,10 @@
-import {Order, unitPriceForLine} from '../context/AppContext';
+import {Order, PaymentMethod, unitPriceForLine} from '../context/AppContext';
+
+export function paymentMethodLabel(method: PaymentMethod | undefined): string | null {
+  if (method === 'cash') {return 'Cash';}
+  if (method === 'card') {return 'Card';}
+  return null;
+}
 
 /** Subtotal / tax / total derived from line items (source of truth for printed receipts). */
 export function computeReceiptTotals(order: Order): {
@@ -72,6 +78,15 @@ export function buildReceiptHTML(order: Order): string {
 
   const noteSection = order.note
     ? `<div class="note-box"><strong>Note:</strong> ${escapeHtml(order.note)}</div>`
+    : '';
+
+  const payLabel = paymentMethodLabel(order.paymentMethod);
+  const paymentMetaRow = payLabel
+    ? `
+    <div class="order-meta">
+      <span>Payment</span>
+      <span class="order-id">${escapeHtml(payLabel)}</span>
+    </div>`
     : '';
 
   return `<!DOCTYPE html>
@@ -180,6 +195,7 @@ export function buildReceiptHTML(order: Order): string {
       <span>Order #</span>
       <span class="order-id">${order.id.slice(-8).toUpperCase()}</span>
     </div>
+    ${paymentMetaRow}
 
     <hr class="separator" />
 
@@ -243,6 +259,7 @@ export function buildESCPOSData(order: Order): {
   orderId: string;
   dateStr: string;
   note?: string;
+  paymentLabel?: string;
 } {
   const date = new Date(order.createdAt);
   const dateStr = `${date.toLocaleDateString('en-US', {
@@ -274,6 +291,8 @@ export function buildESCPOSData(order: Order): {
     };
   });
 
+  const pay = paymentMethodLabel(order.paymentMethod);
+
   return {
     header: order.restaurantName,
     items,
@@ -284,6 +303,7 @@ export function buildESCPOSData(order: Order): {
     orderId: order.id.slice(-8).toUpperCase(),
     dateStr,
     note: order.note,
+    ...(pay ? {paymentLabel: pay} : {}),
   };
 }
 

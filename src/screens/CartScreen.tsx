@@ -16,11 +16,18 @@ import {
   Portal,
   Dialog,
   Chip,
+  RadioButton,
 } from 'react-native-paper';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import {useApp, CartItem, MenuItem, unitPriceForLine} from '../context/AppContext';
+import {
+  useApp,
+  CartItem,
+  MenuItem,
+  PaymentMethod,
+  unitPriceForLine,
+} from '../context/AppContext';
 import {formatToppingPriceLabel} from '../utils/toppingPrice';
 import {sortMenuCategories} from '../utils/menuCategories';
 import {CartStackParamList} from '../navigation/AppNavigator';
@@ -45,6 +52,7 @@ export default function CartScreen() {
   } = useApp();
 
   const [note, setNote] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [showMenu, setShowMenu] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [menuSearch, setMenuSearch] = useState('');
@@ -76,7 +84,7 @@ export default function CartScreen() {
 
   const handlePlaceOrder = () => {
     if (cartItems.length === 0) {return;}
-    const order = placeOrder(note.trim() || undefined);
+    const order = placeOrder(note.trim() || undefined, paymentMethod);
     setNote('');
     navigation.navigate('Receipt', {orderId: order.id});
   };
@@ -329,6 +337,44 @@ export default function CartScreen() {
               left={<TextInput.Icon icon="note-text-outline" />}
             />
 
+            <Text variant="titleSmall" style={styles.paymentTitle}>
+              Payment
+            </Text>
+            <RadioButton.Group
+              onValueChange={v => setPaymentMethod(v as PaymentMethod)}
+              value={paymentMethod}>
+              <TouchableOpacity
+                style={[styles.paymentRow, {borderColor: theme.colors.outline}]}
+                onPress={() => setPaymentMethod('cash')}
+                activeOpacity={0.7}>
+                <MaterialCommunityIcons
+                  name="cash"
+                  size={22}
+                  color={theme.colors.primary}
+                  style={styles.paymentIcon}
+                />
+                <Text variant="bodyLarge" style={styles.paymentLabel}>
+                  Cash
+                </Text>
+                <RadioButton value="cash" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.paymentRow, {borderColor: theme.colors.outline}]}
+                onPress={() => setPaymentMethod('card')}
+                activeOpacity={0.7}>
+                <MaterialCommunityIcons
+                  name="credit-card-outline"
+                  size={22}
+                  color={theme.colors.primary}
+                  style={styles.paymentIcon}
+                />
+                <Text variant="bodyLarge" style={styles.paymentLabel}>
+                  Card
+                </Text>
+                <RadioButton value="card" />
+              </TouchableOpacity>
+            </RadioButton.Group>
+
             {/* Place Order Button */}
             <Button
               mode="contained"
@@ -466,8 +512,20 @@ const styles = StyleSheet.create({
   },
   totalsTitle: {fontWeight: '700', color: '#424242'},
   totalRow: {flexDirection: 'row', justifyContent: 'space-between', marginVertical: 3},
-  noteInput: {marginBottom: 20},
-  placeOrderBtn: {borderRadius: 12},
+  noteInput: {marginBottom: 14},
+  paymentTitle: {fontWeight: '700', marginBottom: 8},
+  paymentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+  paymentIcon: {marginRight: 12},
+  paymentLabel: {flex: 1},
+  placeOrderBtn: {borderRadius: 12, marginTop: 8},
   placeOrderContent: {height: 52},
   placeOrderLabel: {fontSize: 16, fontWeight: '700'},
   quickAdd: {
