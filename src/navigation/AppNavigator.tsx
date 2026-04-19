@@ -1,4 +1,5 @@
 import React from 'react';
+import type {NavigatorScreenParams} from '@react-navigation/native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {useTheme} from 'react-native-paper';
@@ -44,9 +45,9 @@ export type HistoryStackParamList = {
 };
 
 export type TabParamList = {
-  MenuTab: undefined;
-  CartTab: undefined;
-  HistoryTab: undefined;
+  MenuTab: NavigatorScreenParams<MenuStackParamList>;
+  CartTab: NavigatorScreenParams<CartStackParamList>;
+  HistoryTab: NavigatorScreenParams<HistoryStackParamList>;
   SettingsTab: undefined;
 };
 
@@ -182,6 +183,11 @@ function MainTabNavigator() {
             <MaterialCommunityIcons name="food-fork-drink" color={color} size={size} />
           ),
         }}
+        listeners={({navigation}) => ({
+          tabPress: () => {
+            navigation.navigate('MenuTab', {screen: 'MenuList'});
+          },
+        })}
       />
       <Tab.Screen
         name="CartTab"
@@ -195,6 +201,11 @@ function MainTabNavigator() {
             </View>
           ),
         }}
+        listeners={({navigation}) => ({
+          tabPress: () => {
+            navigation.navigate('CartTab', {screen: 'Cart'});
+          },
+        })}
       />
       <Tab.Screen
         name="HistoryTab"
@@ -205,6 +216,11 @@ function MainTabNavigator() {
             <MaterialCommunityIcons name="history" color={color} size={size} />
           ),
         }}
+        listeners={({navigation}) => ({
+          tabPress: () => {
+            navigation.navigate('HistoryTab', {screen: 'OrderHistory'});
+          },
+        })}
       />
       <Tab.Screen
         name="SettingsTab"
@@ -219,6 +235,11 @@ function MainTabNavigator() {
             <MaterialCommunityIcons name="cog" color={color} size={size} />
           ),
         }}
+        listeners={({navigation}) => ({
+          tabPress: () => {
+            navigation.navigate('SettingsTab');
+          },
+        })}
       />
     </Tab.Navigator>
   );

@@ -136,8 +136,33 @@ export default function MenuScreen() {
     [theme.colors, navigation, addToCart],
   );
 
-  const ListHeader = useCallback(
+  const ListEmpty = useCallback(
     () => (
+      <View style={styles.emptyState}>
+        <View style={[styles.emptyIconWrap, {backgroundColor: theme.colors.surfaceVariant}]}>
+          <MaterialCommunityIcons name="silverware-fork-knife" size={40} color={theme.colors.primary} />
+        </View>
+        <Text variant="titleLarge" style={[styles.emptyTitle, {color: theme.colors.onSurface}]}>
+          {menuItems.length === 0 ? 'Your menu is empty' : 'No matches'}
+        </Text>
+        <Text variant="bodyMedium" style={[styles.emptySubText, {color: theme.colors.onSurfaceVariant}]}>
+          {menuItems.length === 0
+            ? 'Add dishes and drinks so you can take orders faster.'
+            : 'Try another search or category.'}
+        </Text>
+      </View>
+    ),
+    [menuItems.length, theme.colors],
+  );
+
+  const keyExtractor = useCallback((item: MenuItem) => item.id, []);
+
+  return (
+    <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
+      {/*
+        Search + chips live outside FlatList so the header is not remounted on each
+        keystroke (ListHeaderComponent identity changes were blurring the Searchbar).
+      */}
       <View style={styles.headerBlock}>
         <Searchbar
           placeholder="Search menu items..."
@@ -189,38 +214,11 @@ export default function MenuScreen() {
           {filtered.length} item{filtered.length !== 1 ? 's' : ''}
         </Text>
       </View>
-    ),
-    [search, theme.colors, categories, selectedCategory, filtered.length],
-  );
 
-  const ListEmpty = useCallback(
-    () => (
-      <View style={styles.emptyState}>
-        <View style={[styles.emptyIconWrap, {backgroundColor: theme.colors.surfaceVariant}]}>
-          <MaterialCommunityIcons name="silverware-fork-knife" size={40} color={theme.colors.primary} />
-        </View>
-        <Text variant="titleLarge" style={[styles.emptyTitle, {color: theme.colors.onSurface}]}>
-          {menuItems.length === 0 ? 'Your menu is empty' : 'No matches'}
-        </Text>
-        <Text variant="bodyMedium" style={[styles.emptySubText, {color: theme.colors.onSurfaceVariant}]}>
-          {menuItems.length === 0
-            ? 'Add dishes and drinks so you can take orders faster.'
-            : 'Try another search or category.'}
-        </Text>
-      </View>
-    ),
-    [menuItems.length, theme.colors],
-  );
-
-  const keyExtractor = useCallback((item: MenuItem) => item.id, []);
-
-  return (
-    <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
       <FlatList
         data={filtered}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
-        ListHeaderComponent={ListHeader}
         ListEmptyComponent={ListEmpty}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         contentContainerStyle={styles.listContent}
