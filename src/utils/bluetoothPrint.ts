@@ -8,7 +8,6 @@
 import {
   BluetoothManager,
   BluetoothEscposPrinter,
-  BluetoothTscPrinter,
 } from '@brooons/react-native-bluetooth-escpos-printer';
 import {Platform, PermissionsAndroid} from 'react-native';
 import {Order} from '../context/AppContext';
@@ -54,7 +53,14 @@ export async function requestBluetoothPermissions(): Promise<boolean> {
 
 // ─── Enable Bluetooth ─────────────────────────────────────────────────────────
 
+function bluetoothUnavailableMessage(): string {
+  return 'Bluetooth printing is not available on this device (use PDF/Share, or Android + hardware).';
+}
+
 export async function enableBluetooth(): Promise<BTResult> {
+  if (!BluetoothManager?.enableBluetooth) {
+    return {success: false, error: bluetoothUnavailableMessage()};
+  }
   try {
     await BluetoothManager.enableBluetooth();
     return {success: true};
@@ -66,6 +72,9 @@ export async function enableBluetooth(): Promise<BTResult> {
 // ─── Scan for devices ─────────────────────────────────────────────────────────
 
 export async function scanForPrinters(): Promise<{printers: BTPrinter[]; error?: string}> {
+  if (!BluetoothManager?.scanDevices) {
+    return {printers: [], error: bluetoothUnavailableMessage()};
+  }
   try {
     const hasPermission = await requestBluetoothPermissions();
     if (!hasPermission) {
@@ -90,6 +99,9 @@ export async function scanForPrinters(): Promise<{printers: BTPrinter[]; error?:
 // ─── Connect to printer ───────────────────────────────────────────────────────
 
 export async function connectToPrinter(address: string): Promise<BTResult> {
+  if (!BluetoothManager?.connect) {
+    return {success: false, error: bluetoothUnavailableMessage()};
+  }
   try {
     await BluetoothManager.connect(address);
     return {success: true};
@@ -102,13 +114,16 @@ export async function connectToPrinter(address: string): Promise<BTResult> {
 
 export async function disconnectPrinter(): Promise<void> {
   try {
-    await BluetoothManager.disconnect();
+    await BluetoothManager?.disconnect?.();
   } catch {}
 }
 
 // ─── Print Receipt ────────────────────────────────────────────────────────────
 
 export async function printReceiptViaBluetooth(order: Order): Promise<BTResult> {
+  if (!BluetoothEscposPrinter?.ALIGN || !BluetoothEscposPrinter.printText) {
+    return {success: false, error: bluetoothUnavailableMessage()};
+  }
   try {
     const data = buildESCPOSData(order);
 

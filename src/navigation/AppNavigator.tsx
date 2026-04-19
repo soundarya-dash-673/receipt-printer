@@ -2,7 +2,7 @@ import React from 'react';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {useTheme} from 'react-native-paper';
-import {View, Text, StyleSheet, Platform} from 'react-native';
+import {View, Text, StyleSheet, Platform, ActivityIndicator} from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import MenuScreen from '../screens/MenuScreen';
@@ -11,7 +11,9 @@ import CartScreen from '../screens/CartScreen';
 import OrderHistoryScreen from '../screens/OrderHistoryScreen';
 import ReceiptScreen from '../screens/ReceiptScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import LoginScreen from '../screens/LoginScreen';
 import {useApp} from '../context/AppContext';
+import {useAuth} from '../context/AuthContext';
 
 // ─── Stack Param Lists ────────────────────────────────────────────────────────
 
@@ -37,7 +39,14 @@ export type TabParamList = {
   SettingsTab: undefined;
 };
 
+export type RootStackParamList = {
+  Login: undefined;
+  Main: undefined;
+};
+
 // ─── Stack Navigators ─────────────────────────────────────────────────────────
+
+const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 const MenuStack = createNativeStackNavigator<MenuStackParamList>();
 function MenuStackNavigator() {
@@ -114,7 +123,7 @@ function CartBadge({count}: {count: number}) {
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
-export default function AppNavigator() {
+function MainTabNavigator() {
   const theme = useTheme();
   const {cartItems} = useApp();
   const cartCount = cartItems.reduce((s, c) => s + c.quantity, 0);
@@ -191,6 +200,35 @@ export default function AppNavigator() {
         }}
       />
     </Tab.Navigator>
+  );
+}
+
+export default function AppNavigator() {
+  const theme = useTheme();
+  const {isReady, isAuthenticated} = useAuth();
+
+  if (!isReady) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: theme.colors.background,
+        }}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  return (
+    <RootStack.Navigator screenOptions={{headerShown: false, animation: 'fade'}}>
+      {isAuthenticated ? (
+        <RootStack.Screen name="Main" component={MainTabNavigator} />
+      ) : (
+        <RootStack.Screen name="Login" component={LoginScreen} />
+      )}
+    </RootStack.Navigator>
   );
 }
 

@@ -70,7 +70,12 @@ export default function OrderHistoryScreen() {
               </Text>
             </View>
             {order.note && (
-              <MaterialCommunityIcons name="note-text-outline" size={14} color="#9E9E9E" />
+              <MaterialCommunityIcons
+                name="note-text-outline"
+                size={14}
+                color="#9E9E9E"
+                style={{marginLeft: 6}}
+              />
             )}
           </View>
           <Text variant="titleMedium" style={[styles.total, {color: theme.colors.primary}]}>
@@ -84,20 +89,23 @@ export default function OrderHistoryScreen() {
 
         <View style={styles.cardFooter}>
           <View style={styles.dateRow}>
-            <MaterialCommunityIcons name="calendar" size={12} color="#9E9E9E" />
+            <MaterialCommunityIcons
+              name="calendar"
+              size={12}
+              color="#9E9E9E"
+              style={{marginRight: 4}}
+            />
             <Text variant="bodySmall" style={styles.dateText}>
               {formatDate(order.createdAt)} at {formatTime(order.createdAt)}
             </Text>
           </View>
           <View style={styles.footerActions}>
             <TouchableOpacity
-              style={styles.iconBtn}
+              style={[styles.iconBtn, {marginRight: 4}]}
               onPress={() => navigation.navigate('Receipt', {orderId: order.id})}>
               <MaterialCommunityIcons name="receipt" size={18} color={theme.colors.tertiary} />
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconBtn}
-              onPress={() => setDeleteTarget(order)}>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => setDeleteTarget(order)}>
               <MaterialCommunityIcons name="delete-outline" size={18} color="#EF5350" />
             </TouchableOpacity>
           </View>
@@ -152,19 +160,21 @@ export default function OrderHistoryScreen() {
           </Text>
         </View>
       ) : (
-        <>
+        <View style={styles.listWrap}>
           <Text variant="bodySmall" style={[styles.count, {color: theme.colors.onSurfaceVariant}]}>
             {filtered.length} order{filtered.length !== 1 ? 's' : ''}
           </Text>
           <FlatList
+            style={styles.listScroll}
             data={filtered}
             keyExtractor={o => o.id}
             renderItem={renderOrder}
             contentContainerStyle={styles.list}
             ItemSeparatorComponent={() => <View style={{height: 8}} />}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           />
-        </>
+        </View>
       )}
 
       {/* Delete single order dialog */}
@@ -213,14 +223,15 @@ const styles = StyleSheet.create({
   container: {flex: 1},
   statsBar: {
     flexDirection: 'row',
-    padding: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
     justifyContent: 'center',
-    gap: 32,
+    alignItems: 'center',
   },
-  statItem: {alignItems: 'center'},
+  statItem: {alignItems: 'center', paddingHorizontal: 28},
   statValue: {color: '#fff', fontSize: 20, fontWeight: '700'},
   statLabel: {color: 'rgba(255,255,255,0.8)', fontSize: 11, marginTop: 2},
-  statDivider: {width: 1, backgroundColor: 'rgba(255,255,255,0.3)'},
+  statDivider: {width: 1, height: 36, backgroundColor: 'rgba(255,255,255,0.3)'},
   searchRow: {flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 10},
   searchBar: {flex: 1, borderRadius: 10},
   clearAllBtn: {
@@ -231,6 +242,8 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   count: {paddingHorizontal: 16, paddingTop: 6, paddingBottom: 2},
+  listWrap: {flex: 1},
+  listScroll: {flex: 1},
   list: {padding: 12, paddingBottom: 24},
   card: {
     padding: 14,
@@ -242,17 +255,17 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   cardHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
-  orderIdRow: {flexDirection: 'row', alignItems: 'center', gap: 6},
+  orderIdRow: {flexDirection: 'row', alignItems: 'center'},
   orderBadge: {paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6},
   orderId: {fontWeight: '700'},
   total: {fontWeight: '700', fontSize: 16},
   itemNames: {color: '#757575', marginTop: 6, marginBottom: 8},
   cardFooter: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
-  dateRow: {flexDirection: 'row', alignItems: 'center', gap: 4},
+  dateRow: {flexDirection: 'row', alignItems: 'center'},
   dateText: {color: '#9E9E9E'},
-  footerActions: {flexDirection: 'row', gap: 8},
+  footerActions: {flexDirection: 'row', alignItems: 'center'},
   iconBtn: {padding: 4},
-  empty: {flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8, paddingBottom: 80},
+  empty: {flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 80},
   emptyText: {color: '#757575', marginTop: 12},
   emptySubText: {color: '#BDBDBD', textAlign: 'center'},
 });

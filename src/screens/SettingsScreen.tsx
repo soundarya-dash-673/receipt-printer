@@ -19,10 +19,12 @@ import {
 } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useApp} from '../context/AppContext';
+import {useAuth} from '../context/AuthContext';
 
 export default function SettingsScreen() {
   const theme = useTheme();
   const {settings, updateSettings, menuItems, orders, clearAllOrders} = useApp();
+  const {session, logout} = useAuth();
 
   const [restaurantName, setRestaurantName] = useState(settings.restaurantName);
   const [taxRate, setTaxRate] = useState(settings.taxRate.toString());
@@ -64,7 +66,7 @@ export default function SettingsScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
         style={[styles.container, {backgroundColor: theme.colors.background}]}
         contentContainerStyle={styles.content}
@@ -187,6 +189,23 @@ export default function SettingsScreen() {
           Save Settings
         </Button>
 
+        {/* Account */}
+        <Surface style={styles.section} elevation={1}>
+          <View style={styles.sectionHeader}>
+            <MaterialCommunityIcons name="account-circle-outline" size={20} color={theme.colors.primary} />
+            <Text variant="titleSmall" style={styles.sectionTitle}>Account</Text>
+          </View>
+          <Divider style={styles.divider} />
+          {session?.phone ? (
+            <Text variant="bodyMedium" style={styles.signedInAs}>
+              Signed in as {session.phone}
+            </Text>
+          ) : null}
+          <Button mode="outlined" icon="logout" onPress={logout} textColor={theme.colors.primary} style={styles.logoutBtn}>
+            Sign out
+          </Button>
+        </Surface>
+
         {/* Danger Zone */}
         <Surface style={[styles.section, styles.dangerSection]} elevation={1}>
           <View style={styles.sectionHeader}>
@@ -273,4 +292,6 @@ const styles = StyleSheet.create({
   saveBtnContent: {height: 50},
   saveBtnLabel: {fontSize: 15, fontWeight: '700'},
   dangerSection: {},
+  signedInAs: {marginBottom: 12, color: '#616161'},
+  logoutBtn: {borderColor: '#E86A2B'},
 });

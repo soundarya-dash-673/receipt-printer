@@ -5,6 +5,7 @@ import {Provider as PaperProvider, MD3LightTheme, MD3DarkTheme} from 'react-nati
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import {AppProvider} from './src/context/AppContext';
+import {AuthProvider} from './src/context/AuthContext';
 
 const lightTheme = {
   ...MD3LightTheme,
@@ -41,15 +42,17 @@ export default function App(): React.JSX.Element {
   return (
     <SafeAreaProvider>
       <PaperProvider theme={theme}>
-        <AppProvider>
-          <NavigationContainer>
-            <StatusBar
-              barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-              backgroundColor={theme.colors.background}
-            />
-            <AppNavigator />
-          </NavigationContainer>
-        </AppProvider>
+        <AuthProvider>
+          <AppProvider>
+            <NavigationContainer>
+              <StatusBar
+                barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+                backgroundColor={theme.colors.background}
+              />
+              <AppNavigator />
+            </NavigationContainer>
+          </AppProvider>
+        </AuthProvider>
       </PaperProvider>
     </SafeAreaProvider>
   );

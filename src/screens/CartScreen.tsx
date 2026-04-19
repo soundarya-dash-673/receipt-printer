@@ -119,6 +119,7 @@ export default function CartScreen() {
             style={styles.quickSearch}
           />
           <FlatList
+            style={styles.quickChipList}
             data={filteredMenu}
             keyExtractor={m => m.id}
             horizontal
@@ -140,7 +141,12 @@ export default function CartScreen() {
         </View>
       )}
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled>
         {/* Cart Items */}
         {cartItems.length === 0 ? (
           <View style={styles.empty}>
@@ -290,7 +296,8 @@ function TotalRow({
 
 const styles = StyleSheet.create({
   container: {flex: 1},
-  scroll: {padding: 12, paddingBottom: 100},
+  scrollView: {flex: 1},
+  scroll: {padding: 12, paddingBottom: 120},
   empty: {alignItems: 'center', paddingVertical: 60},
   emptyText: {color: '#757575', marginTop: 12},
   emptySubText: {color: '#BDBDBD', textAlign: 'center', marginTop: 4, paddingHorizontal: 40},
@@ -353,7 +360,8 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   quickSearch: {marginBottom: 8, marginTop: 8},
-  quickChips: {paddingVertical: 4, gap: 8},
+  quickChipList: {minHeight: 72, maxHeight: 88},
+  quickChips: {paddingVertical: 4},
   quickChip: {
     borderWidth: 1,
     borderRadius: 10,
