@@ -4,7 +4,7 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  Alert,
+  Platform,
 } from 'react-native';
 import {
   FAB,
@@ -16,6 +16,7 @@ import {
   Portal,
   Dialog,
   Button,
+  Surface,
 } from 'react-native-paper';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -104,8 +105,11 @@ export default function MenuScreen() {
         placeholder="Search menu items..."
         value={search}
         onChangeText={setSearch}
-        style={styles.searchBar}
+        style={[styles.searchBar, {backgroundColor: theme.colors.surface}]}
+        inputStyle={styles.searchInput}
+        elevation={Platform.OS === 'ios' ? 0 : 1}
         iconColor={theme.colors.primary}
+        placeholderTextColor={theme.colors.onSurfaceVariant}
       />
 
       {/* Category Chips */}
@@ -117,13 +121,22 @@ export default function MenuScreen() {
         contentContainerStyle={styles.chipRow}
         renderItem={({item: cat}) => (
           <Chip
+            mode="flat"
+            compact
             selected={selectedCategory === cat}
+            showSelectedOverlay
             onPress={() => setSelectedCategory(cat)}
             style={[
               styles.chip,
-              selectedCategory === cat && {backgroundColor: theme.colors.primary},
+              {
+                borderWidth: selectedCategory === cat ? 0 : 1,
+                borderColor: theme.colors.outline ?? '#E8DDD4',
+                backgroundColor:
+                  selectedCategory === cat ? theme.colors.primary : theme.colors.surface,
+              },
             ]}
             textStyle={{
+              fontWeight: selectedCategory === cat ? '600' : '500',
               color: selectedCategory === cat ? '#fff' : theme.colors.onSurface,
             }}>
             {cat}
@@ -141,10 +154,20 @@ export default function MenuScreen() {
       {/* Menu List */}
       {filtered.length === 0 ? (
         <View style={styles.emptyState}>
-          <MaterialCommunityIcons name="food-off" size={64} color="#BDBDBD" />
-          <Text variant="titleMedium" style={styles.emptyText}>No items found</Text>
-          <Text variant="bodySmall" style={styles.emptySubText}>
-            Tap + to add your first menu item
+          <Surface style={[styles.emptyIconWrap, {backgroundColor: theme.colors.surfaceVariant}]} elevation={0}>
+            <MaterialCommunityIcons
+              name="silverware-fork-knife"
+              size={40}
+              color={theme.colors.primary}
+            />
+          </Surface>
+          <Text variant="titleLarge" style={[styles.emptyTitle, {color: theme.colors.onSurface}]}>
+            {menuItems.length === 0 ? 'Your menu is empty' : 'No matches'}
+          </Text>
+          <Text variant="bodyMedium" style={[styles.emptySubText, {color: theme.colors.onSurfaceVariant}]}>
+            {menuItems.length === 0
+              ? 'Add dishes and drinks so you can take orders faster.'
+              : 'Try another search or category.'}
           </Text>
         </View>
       ) : (
@@ -161,9 +184,11 @@ export default function MenuScreen() {
       {/* FAB */}
       <FAB
         icon="plus"
+        mode="elevated"
         style={[styles.fab, {backgroundColor: theme.colors.primary}]}
         onPress={() => navigation.navigate('MenuItemForm', {})}
         color="#fff"
+        customSize={56}
       />
 
       {/* Delete Confirmation Dialog */}
@@ -187,22 +212,39 @@ export default function MenuScreen() {
 
 const styles = StyleSheet.create({
   container: {flex: 1},
-  searchBar: {margin: 12, borderRadius: 10},
-  chipRow: {paddingHorizontal: 12, paddingVertical: 8, gap: 8},
-  chip: {marginRight: 4},
-  countText: {paddingHorizontal: 16, paddingBottom: 6, marginTop: 4},
-  list: {padding: 12, paddingBottom: 90},
+  searchBar: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    borderRadius: 14,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      default: {},
+    }),
+  },
+  searchInput: {fontSize: 16},
+  chipRow: {paddingHorizontal: 16, paddingVertical: 10, gap: 8},
+  chip: {marginRight: 6, height: 36},
+  countText: {paddingHorizontal: 20, paddingBottom: 8, marginTop: 6, letterSpacing: 0.2},
+  list: {padding: 16, paddingBottom: 100},
   card: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 12,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.06)',
     elevation: 2,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
   },
   cardLeft: {flexDirection: 'row', flex: 1, alignItems: 'center'},
   categoryDot: {width: 6, height: 40, borderRadius: 3, marginRight: 12},
@@ -220,8 +262,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  emptyState: {flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8},
-  emptyText: {color: '#757575', marginTop: 12},
-  emptySubText: {color: '#BDBDBD'},
-  fab: {position: 'absolute', right: 16, bottom: 16},
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    gap: 10,
+  },
+  emptyIconWrap: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  emptyTitle: {textAlign: 'center', fontWeight: '700'},
+  emptySubText: {textAlign: 'center', lineHeight: 22},
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    borderRadius: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#E86A2B',
+        shadowOffset: {width: 0, height: 6},
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+      },
+      default: {},
+    }),
+  },
 });

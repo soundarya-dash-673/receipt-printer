@@ -8,24 +8,29 @@ import {AppProvider} from './src/context/AppContext';
 
 const lightTheme = {
   ...MD3LightTheme,
+  roundness: 12,
   colors: {
     ...MD3LightTheme.colors,
     primary: '#E86A2B',
     secondary: '#F4A261',
     tertiary: '#2A9D8F',
     surface: '#FFFFFF',
+    surfaceVariant: '#F3EDE7',
     background: '#F8F4F0',
     onPrimary: '#FFFFFF',
+    outline: '#E8DDD4',
   },
 };
 
 const darkTheme = {
   ...MD3DarkTheme,
+  roundness: 12,
   colors: {
     ...MD3DarkTheme.colors,
     primary: '#F4A261',
     secondary: '#E86A2B',
     tertiary: '#2A9D8F',
+    outline: '#4A4540',
   },
 };
 
