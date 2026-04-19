@@ -4,7 +4,7 @@ import {NavigationContainer, DefaultTheme, DarkTheme} from '@react-navigation/na
 import {Provider as PaperProvider} from 'react-native-paper';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
-import {slipgoLightTheme, slipgoDarkTheme} from './src/theme/slipgoTheme';
+import {slipgoLightTheme, slipgoDarkTheme, appPalette} from './src/theme/slipgoTheme';
 import {navigationRef} from './src/navigation/navigationRef';
 
 export default function App(): React.JSX.Element {
@@ -16,9 +16,9 @@ export default function App(): React.JSX.Element {
       ...(isDarkMode ? DarkTheme.colors : DefaultTheme.colors),
       primary: paper.colors.primary,
       background: paper.colors.background,
-      card: isDarkMode ? '#122436' : '#FFFFFF',
-      text: isDarkMode ? '#E8ECF1' : '#0A1A2F',
-      border: '#B8C4D4',
+      card: isDarkMode ? (paper.colors.surface ?? '#1E1E1E') : appPalette.surface,
+      text: isDarkMode ? '#F5F5F4' : appPalette.onSurface,
+      border: appPalette.borderSoft,
       notification: paper.colors.primary,
     },
   };

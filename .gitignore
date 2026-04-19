@@ -55,6 +55,7 @@ vendor/bundle/
 
 # JS bundle output (release)
 *.jsbundle
+web-build/
 
 # Testing
 coverage/

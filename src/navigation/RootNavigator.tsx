@@ -4,6 +4,8 @@ import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useTheme} from 'react-native-paper';
 
+import CartTabBarIcon from '../components/CartTabBarIcon';
+import {tabBarOptions} from '../theme/foodReceiptLayout';
 import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/LoginScreen';
 import HomeOrdersScreen from '../screens/HomeOrdersScreen';
@@ -42,7 +44,7 @@ function HomeStackNav() {
   const h = stackHeader(theme.colors.primary);
   return (
     <HomeStack.Navigator screenOptions={h}>
-      <HomeStack.Screen name="HomeOrders" component={HomeOrdersScreen} options={{title: 'Orders'}} />
+      <HomeStack.Screen name="HomeOrders" component={HomeOrdersScreen} options={{title: 'Order history'}} />
       <HomeStack.Screen name="ReceiptDetail" component={ReceiptDetailScreen} options={{title: 'Receipt'}} />
     </HomeStack.Navigator>
   );
@@ -53,7 +55,7 @@ function OrderStackNav() {
   const h = stackHeader(theme.colors.primary);
   return (
     <OrderStack.Navigator screenOptions={h}>
-      <OrderStack.Screen name="NewOrder" component={NewOrderScreen} options={{title: 'New order'}} />
+      <OrderStack.Screen name="NewOrder" component={NewOrderScreen} options={{title: 'Cart'}} />
       <OrderStack.Screen name="OrderSummary" component={OrderSummaryScreen} options={{title: 'Checkout'}} />
       <OrderStack.Screen name="ReceiptDetail" component={ReceiptDetailScreen} options={{title: 'Receipt'}} />
     </OrderStack.Navigator>
@@ -77,18 +79,12 @@ function SettingsStackNav() {
 function MainTabs() {
   const theme = useTheme();
   return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: '#9E9E9E',
-        tabBarStyle: {height: 58, paddingBottom: 8, paddingTop: 4},
-      }}>
+    <Tab.Navigator screenOptions={tabBarOptions(theme)}>
       <Tab.Screen
         name="HomeTab"
         component={HomeStackNav}
         options={{
-          tabBarLabel: 'Orders',
+          tabBarLabel: 'History',
           tabBarIcon: ({color, size}) => <MaterialCommunityIcons name="receipt" color={color} size={size} />,
         }}
       />
@@ -96,8 +92,8 @@ function MainTabs() {
         name="OrderTab"
         component={OrderStackNav}
         options={{
-          tabBarLabel: 'New',
-          tabBarIcon: ({color, size}) => <MaterialCommunityIcons name="cart-plus" color={color} size={size} />,
+          tabBarLabel: 'Cart',
+          tabBarIcon: ({color, size}) => <CartTabBarIcon color={color} size={size} />,
         }}
       />
       <Tab.Screen

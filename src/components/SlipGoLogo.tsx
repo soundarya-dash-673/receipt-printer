@@ -1,7 +1,7 @@
 import React from 'react';
 import Svg, {Path} from 'react-native-svg';
 import {View} from 'react-native';
-import {slipgoColors} from '../theme/slipgoTheme';
+import {appPalette} from '../theme/slipgoTheme';
 
 type Props = {
   size?: number;
@@ -9,7 +9,7 @@ type Props = {
 };
 
 /** Stylized "S" like a receipt slip with zig-zag bottom — vector placeholder. */
-export default function SlipGoLogo({size = 56, color = slipgoColors.slipgoBlue}: Props) {
+export default function SlipGoLogo({size = 56, color = appPalette.primary}: Props) {
   return (
     <View style={{width: size, height: size}}>
       <Svg width={size} height={size} viewBox="0 0 64 64">

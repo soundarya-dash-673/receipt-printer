@@ -1,7 +1,8 @@
 import React, {useState, useCallback} from 'react';
 import {View, StyleSheet, ScrollView} from 'react-native';
 import {ActivityIndicator} from 'react-native';
-import {Text, Button, Chip, useTheme} from 'react-native-paper';
+import {Text, Button, Chip, Surface, useTheme} from 'react-native-paper';
+import {listCardSurface} from '../theme/foodReceiptLayout';
 import * as orderRepo from '../data/repositories/orderRepository';
 import {getRangeForPreset, type Preset} from '../utils/dateRange';
 import {exportOrdersReportPdf} from '../utils/reportsPdf';
@@ -41,7 +42,7 @@ export default function ReportsScreen() {
 
   return (
     <ScrollView style={[styles.root, {backgroundColor: theme.colors.background}]} contentContainerStyle={styles.pad}>
-      <Text variant="titleLarge" style={{color: '#0A1A2F'}}>
+      <Text variant="titleLarge" style={{color: theme.colors.onSurface}}>
         Reports
       </Text>
       <View style={styles.chips}>
@@ -55,12 +56,14 @@ export default function ReportsScreen() {
       {loading ? (
         <ActivityIndicator style={{marginTop: 24}} />
       ) : agg ? (
-        <View style={styles.card}>
-          <Text variant="headlineSmall" style={{color: theme.colors.primary}}>
-            ${agg.sum.toFixed(2)}
-          </Text>
-          <Text variant="bodyMedium">{agg.count} orders</Text>
-        </View>
+        <Surface style={[listCardSurface, styles.cardElev]} elevation={2}>
+          <View style={styles.cardInner}>
+            <Text variant="headlineSmall" style={{color: theme.colors.primary}}>
+              ${agg.sum.toFixed(2)}
+            </Text>
+            <Text variant="bodyMedium">{agg.count} orders</Text>
+          </View>
+        </Surface>
       ) : null}
 
       <Button mode="outlined" onPress={load} style={styles.btn}>
@@ -78,12 +81,7 @@ const styles = StyleSheet.create({
   pad: {padding: 20, paddingBottom: 40},
   chips: {flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 16},
   chip: {marginRight: 8},
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    marginVertical: 12,
-    elevation: 2,
-  },
+  cardElev: {backgroundColor: '#FFFFFF'},
+  cardInner: {padding: 20},
   btn: {marginTop: 12, borderRadius: 12},
 });

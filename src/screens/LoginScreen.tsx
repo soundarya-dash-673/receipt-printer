@@ -23,6 +23,11 @@ export default function LoginScreen() {
   const load = useCallback(async () => {
     const list = await userRepo.getAllUsers();
     setUsers(list);
+    if (list.length === 1) {
+      setSelected(list[0]);
+    } else if (list.length === 0) {
+      setSelected(null);
+    }
   }, []);
 
   useEffect(() => {
@@ -31,7 +36,7 @@ export default function LoginScreen() {
 
   const onLogin = async () => {
     if (!selected) {
-      setErr('Select a team member');
+      setErr(users.length <= 1 ? 'Could not load your account. Try refreshing the app.' : 'Tap your name above, then enter your PIN.');
       return;
     }
     const ok = await userRepo.verifyPin(selected.id, pin);
@@ -49,28 +54,38 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.header}>
         <SlipGoLogo size={64} />
-        <Text variant="headlineMedium" style={styles.brand}>
+        <Text variant="headlineMedium" style={[styles.brand, {color: theme.colors.onSurface}]}>
           SlipGo
         </Text>
-        <Text variant="bodyMedium" style={styles.tag}>
+        <Text variant="bodyMedium" style={[styles.tag, {color: theme.colors.onSurface}]}>
           {slipgoTagline}
         </Text>
       </View>
 
-      <Text variant="titleMedium" style={styles.section}>
+      <Text variant="titleMedium" style={[styles.section, {color: theme.colors.onSurface}]}>
         Sign in
       </Text>
+      {users.length > 1 ? (
+        <Text variant="bodySmall" style={styles.helper}>
+          Choose your name, then enter your PIN.
+        </Text>
+      ) : null}
       <FlatList
         data={users}
         keyExtractor={u => u.id}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.chips}
+        ListEmptyComponent={
+          <Text variant="bodySmall" style={styles.emptyUsers}>
+            No team members found. The database may still be loading — try again in a moment.
+          </Text>
+        }
         renderItem={({item}) => (
           <Surface
             style={[
               styles.userCard,
-              {borderColor: selected?.id === item.id ? theme.colors.primary : '#E8ECF1'},
+              {borderColor: selected?.id === item.id ? theme.colors.primary : (theme.colors.outline ?? '#E8E0D8')},
             ]}
             elevation={1}>
             <Button mode={selected?.id === item.id ? 'contained' : 'outlined'} onPress={() => setSelected(item)}>
@@ -115,9 +130,11 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   root: {flex: 1, padding: 20, paddingTop: 48},
   header: {alignItems: 'center', marginBottom: 24},
-  brand: {color: '#0A1A2F', marginTop: 8, fontWeight: '700'},
-  tag: {color: '#0A1A2F', opacity: 0.65, marginTop: 4},
-  section: {marginBottom: 12, color: '#0A1A2F'},
+  brand: {marginTop: 8, fontWeight: '700'},
+  tag: {opacity: 0.65, marginTop: 4},
+  section: {marginBottom: 12},
+  helper: {opacity: 0.7, marginBottom: 8},
+  emptyUsers: {opacity: 0.65, paddingVertical: 8},
   chips: {gap: 12, paddingVertical: 8},
   userCard: {
     borderRadius: 16,

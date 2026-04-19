@@ -218,7 +218,11 @@ export default function ReceiptDetailScreen() {
         </View>
       ) : null}
 
-      <WebView source={{html: receiptHTML}} style={styles.webview} scrollEnabled />
+      <WebView
+        source={{html: receiptHTML}}
+        style={[styles.webview, {backgroundColor: theme.colors.background}]}
+        scrollEnabled
+      />
 
       <Portal>
         <Dialog visible={btDialogVisible} onDismiss={() => setBTDialogVisible(false)}>
@@ -292,7 +296,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#C8E6C9',
   },
-  webview: {flex: 1, backgroundColor: '#E8ECF1'},
+  webview: {flex: 1},
   scanningRow: {flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8},
   scanningText: {color: '#555'},
 });

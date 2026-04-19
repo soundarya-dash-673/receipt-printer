@@ -22,6 +22,10 @@ export default function BrandingSetupScreen() {
   }, []);
 
   const pickLogo = async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Logo on web', 'Use the iOS or Android app to upload a logo file. You can still edit shop name, tax, and footer here.');
+      return;
+    }
     const res = await launchImageLibrary({mediaType: 'photo', quality: 0.9});
     const asset = res.assets?.[0];
     if (!asset?.uri) {

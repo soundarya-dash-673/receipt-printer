@@ -1,6 +1,7 @@
 import React, {useState, useEffect} from 'react';
 import {View, StyleSheet, ScrollView} from 'react-native';
-import {Text, Button, RadioButton, useTheme} from 'react-native-paper';
+import {Text, Button, RadioButton, Surface, useTheme} from 'react-native-paper';
+import {listCardSurface} from '../theme/foodReceiptLayout';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useDraftOrderStore} from '../stores/draftOrderStore';
@@ -59,23 +60,25 @@ export default function OrderSummaryScreen() {
 
   return (
     <ScrollView style={[styles.root, {backgroundColor: theme.colors.background}]} contentContainerStyle={styles.content}>
-      <Text variant="titleLarge" style={{color: '#0A1A2F'}}>
+      <Text variant="titleLarge" style={{color: theme.colors.onSurface}}>
         Checkout
       </Text>
       {lines.map(l => (
-        <View key={l.tempId} style={styles.lineBlock}>
-          <Text variant="bodyMedium">
-            {l.quantity}× {l.itemName} — ${lineSubtotal(l).toFixed(2)}
-          </Text>
-          <Text variant="bodySmall" style={{opacity: 0.75}}>
-            Base ${l.unitPrice.toFixed(2)} · with toppings ${effectiveUnitPrice(l).toFixed(2)} each
-          </Text>
-          {l.toppings.length > 0 ? (
-            <Text variant="bodySmall" style={{opacity: 0.85}}>
-              {l.toppings.map(t => (t.price > 0 ? `${t.name} (+$${t.price.toFixed(2)})` : `${t.name} (free)`)).join(' · ')}
+        <Surface key={l.tempId} style={[listCardSurface, styles.lineCard]} elevation={2}>
+          <View style={styles.lineInner}>
+            <Text variant="bodyMedium">
+              {l.quantity}× {l.itemName} — ${lineSubtotal(l).toFixed(2)}
             </Text>
-          ) : null}
-        </View>
+            <Text variant="bodySmall" style={{opacity: 0.75}}>
+              Base ${l.unitPrice.toFixed(2)} · with toppings ${effectiveUnitPrice(l).toFixed(2)} each
+            </Text>
+            {l.toppings.length > 0 ? (
+              <Text variant="bodySmall" style={{opacity: 0.85}}>
+                {l.toppings.map(t => (t.price > 0 ? `${t.name} (+$${t.price.toFixed(2)})` : `${t.name} (free)`)).join(' · ')}
+              </Text>
+            ) : null}
+          </View>
+        </Surface>
       ))}
       <Text style={styles.mt}>Subtotal ${totals.subtotal.toFixed(2)}</Text>
       <Text>
@@ -104,7 +107,8 @@ export default function OrderSummaryScreen() {
 const styles = StyleSheet.create({
   root: {flex: 1},
   content: {padding: 20, paddingBottom: 40},
-  lineBlock: {marginBottom: 12},
+  lineCard: {backgroundColor: '#FFFFFF'},
+  lineInner: {padding: 12},
   mt: {marginTop: 16},
   btn: {marginTop: 24, borderRadius: 12},
 });

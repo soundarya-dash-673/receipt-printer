@@ -21,6 +21,9 @@ export interface BTResult {
 }
 
 export async function requestBluetoothPermissions(): Promise<boolean> {
+  if (Platform.OS === 'web') {
+    return false;
+  }
   if (Platform.OS === 'ios') {
     return true;
   }
@@ -46,6 +49,9 @@ export async function requestBluetoothPermissions(): Promise<boolean> {
 }
 
 export async function enableBluetooth(): Promise<BTResult> {
+  if (Platform.OS === 'web') {
+    return {success: false, error: 'Bluetooth is not available in the browser'};
+  }
   try {
     await BluetoothManager.enableBluetooth();
     return {success: true};
@@ -56,6 +62,9 @@ export async function enableBluetooth(): Promise<BTResult> {
 }
 
 export async function scanForPrinters(): Promise<{printers: BTPrinter[]; error?: string}> {
+  if (Platform.OS === 'web') {
+    return {printers: [], error: 'Bluetooth is not available in the browser'};
+  }
   try {
     const hasPermission = await requestBluetoothPermissions();
     if (!hasPermission) {
@@ -84,6 +93,9 @@ export async function scanForPrinters(): Promise<{printers: BTPrinter[]; error?:
 }
 
 export async function connectToPrinter(address: string): Promise<BTResult> {
+  if (Platform.OS === 'web') {
+    return {success: false, error: 'Bluetooth is not available in the browser'};
+  }
   try {
     await BluetoothManager.connect(address);
     return {success: true};
@@ -94,6 +106,9 @@ export async function connectToPrinter(address: string): Promise<BTResult> {
 }
 
 export async function disconnectPrinter(): Promise<void> {
+  if (Platform.OS === 'web') {
+    return;
+  }
   try {
     await BluetoothManager.disconnect();
   } catch {
@@ -102,6 +117,9 @@ export async function disconnectPrinter(): Promise<void> {
 }
 
 export async function printReceiptViaBluetooth(payload: ReceiptPayload): Promise<BTResult> {
+  if (Platform.OS === 'web') {
+    return {success: false, error: 'Bluetooth printing requires the mobile app'};
+  }
   try {
     const data = buildESCPOSData(payload);
 

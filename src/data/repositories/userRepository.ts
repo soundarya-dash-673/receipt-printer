@@ -1,4 +1,5 @@
-import {getDatabase, hashPin} from '../db/database';
+import {getDatabase} from '../db/database';
+import {hashPin} from '../db/databaseShared';
 import type {User, UserRole} from '../../domain/models';
 import {v4 as uuidv4} from 'uuid';
 

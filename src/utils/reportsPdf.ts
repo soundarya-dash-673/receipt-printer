@@ -1,6 +1,9 @@
+import {Platform} from 'react-native';
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import Share from 'react-native-share';
 import type {OrderEntity} from '../domain/models';
+import {appPalette} from '../theme/slipgoTheme';
+import {openHtmlPrintWindow} from './webHtmlPrint';
 
 export async function exportOrdersReportPdf(
   orders: OrderEntity[],
@@ -19,11 +22,11 @@ export async function exportOrdersReportPdf(
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
   <style>
-    body { font-family: system-ui, sans-serif; padding: 24px; color: #0A1A2F; }
-    h1 { color: #2D8CFF; font-size: 18px; }
+    body { font-family: system-ui, sans-serif; padding: 24px; color: ${appPalette.onSurface}; }
+    h1 { color: ${appPalette.primary}; font-size: 18px; }
     table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 12px; }
-    th, td { border: 1px solid #E8ECF1; padding: 8px; text-align: left; }
-    th { background: #E8ECF1; }
+    th, td { border: 1px solid ${appPalette.borderSoft}; padding: 8px; text-align: left; }
+    th { background: ${appPalette.background}; }
   </style></head><body>
   <h1>SlipGo — ${escape(title)}</h1>
   <p>${orders.length} orders</p>
@@ -32,6 +35,10 @@ export async function exportOrdersReportPdf(
   </body></html>`;
 
   try {
+    if (Platform.OS === 'web') {
+      const ok = openHtmlPrintWindow(html);
+      return ok ? {success: true} : {success: false, error: 'Could not open print window'};
+    }
     const fileName = `slipgo_report_${Date.now()}`;
     const pdf = await RNHTMLtoPDF.convert({html, fileName, directory: 'Documents', base64: false});
     if (!pdf.filePath) {

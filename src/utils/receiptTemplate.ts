@@ -1,5 +1,6 @@
 import type {OrderWithItems} from '../data/repositories/orderRepository';
 import type {Settings} from '../domain/models';
+import {appPalette} from '../theme/slipgoTheme';
 
 export interface ReceiptLine {
   name: string;
@@ -112,32 +113,32 @@ export function buildReceiptHTML(payload: ReceiptPayload): string {
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Courier New', Courier, monospace;
-      background: #E8ECF1;
+      background: ${appPalette.background};
       display: flex;
       justify-content: center;
       padding: 20px 0;
-      color: #0A1A2F;
+      color: ${appPalette.onSurface};
     }
     .receipt {
-      background: #FFFFFF;
+      background: ${appPalette.surface};
       width: 320px;
       max-width: 100%;
       padding: 24px 20px;
       border-radius: 16px;
-      box-shadow: 0 4px 16px rgba(10, 26, 47, 0.12);
+      box-shadow: 0 4px 16px rgba(232, 106, 43, 0.12);
     }
-    .brand { text-align: center; margin-bottom: 12px; font-size: 11px; color: #2D8CFF; font-weight: bold; letter-spacing: 2px; }
+    .brand { text-align: center; margin-bottom: 12px; font-size: 11px; color: ${appPalette.primary}; font-weight: bold; letter-spacing: 2px; }
     .header { text-align: center; margin-bottom: 14px; }
     .shop-name {
       font-size: 20px;
       font-weight: bold;
       letter-spacing: 0.5px;
-      color: #0A1A2F;
+      color: ${appPalette.onSurface};
     }
     .restaurant-info { font-size: 11px; color: #555; margin-top: 6px; line-height: 1.5; }
-    .separator { border: none; border-top: 1px dashed #B8C4D4; margin: 12px 0; }
+    .separator { border: none; border-top: 1px dashed ${appPalette.borderSoft}; margin: 12px 0; }
     .order-meta { font-size: 11px; color: #555; display: flex; justify-content: space-between; margin-bottom: 4px; }
-    .order-id { font-weight: bold; color: #2D8CFF; }
+    .order-id { font-weight: bold; color: ${appPalette.primary}; }
     table { width: 100%; border-collapse: collapse; margin: 8px 0; }
     .item-name { font-size: 13px; font-weight: bold; padding: 4px 0 1px; }
     .item-qty { font-size: 13px; text-align: center; width: 36px; }
@@ -146,23 +147,23 @@ export function buildReceiptHTML(payload: ReceiptPayload): string {
     .item-unit { font-size: 10px; color: #888; }
     .topping-row td { font-size: 11px; padding: 2px 0 2px 8px; color: #333; }
     .topping-name { font-style: italic; }
-    .topping-price { text-align: right; color: #2D8CFF; font-weight: 600; }
+    .topping-price { text-align: right; color: ${appPalette.primary}; font-weight: 600; }
     .totals-table td { padding: 3px 0; font-size: 13px; }
     .totals-table .label { color: #444; }
     .totals-table .value { text-align: right; font-weight: bold; }
     .tax-row td { color: #666; font-size: 12px; }
     .total-row td { font-size: 15px; border-top: 1px dashed #999; padding-top: 8px; margin-top: 4px; }
-    .pay-row { font-size: 12px; color: #0A1A2F; margin-top: 6px; }
+    .pay-row { font-size: 12px; color: ${appPalette.onSurface}; margin-top: 6px; }
     .note-box {
-      background: #E8F4FF;
-      border-left: 3px solid #2D8CFF;
+      background: #FFF5F0;
+      border-left: 3px solid ${appPalette.primary};
       padding: 8px 10px;
       font-size: 11px;
       margin: 10px 0;
       border-radius: 4px;
     }
     .footer { text-align: center; margin-top: 18px; font-size: 12px; color: #555; }
-    .thank-you { font-size: 13px; font-weight: bold; color: #0A1A2F; margin-bottom: 4px; }
+    .thank-you { font-size: 13px; font-weight: bold; color: ${appPalette.onSurface}; margin-bottom: 4px; }
   </style>
 </head>
 <body>

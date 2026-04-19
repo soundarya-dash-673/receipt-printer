@@ -1,6 +1,6 @@
 import React, {useEffect} from 'react';
 import {View, ActivityIndicator, StyleSheet} from 'react-native';
-import {Text} from 'react-native-paper';
+import {Text, useTheme} from 'react-native-paper';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useBootstrapStore} from '../stores/appBootstrapStore';
@@ -12,6 +12,7 @@ import type {RootStackParamList} from '../navigation/types';
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Splash'>;
 
 export default function SplashScreen() {
+  const theme = useTheme();
   const navigation = useNavigation<Nav>();
   const init = useBootstrapStore(s => s.init);
   const error = useBootstrapStore(s => s.error);
@@ -45,7 +46,7 @@ export default function SplashScreen() {
 
   if (error) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.center, {backgroundColor: theme.colors.background}]}>
         <Text variant="bodyLarge" style={styles.err}>
           Database error: {error}
         </Text>
@@ -54,23 +55,23 @@ export default function SplashScreen() {
   }
 
   return (
-    <View style={styles.center}>
+    <View style={[styles.center, {backgroundColor: theme.colors.background}]}>
       <SlipGoLogo size={72} />
-      <Text variant="headlineSmall" style={styles.title}>
+      <Text variant="headlineSmall" style={[styles.title, {color: theme.colors.onSurface}]}>
         SlipGo
       </Text>
-      <Text variant="bodySmall" style={styles.tag}>
+      <Text variant="bodySmall" style={[styles.tag, {color: theme.colors.onSurface}]}>
         {slipgoTagline}
       </Text>
-      <ActivityIndicator style={styles.spin} />
+      <ActivityIndicator color={theme.colors.primary} style={styles.spin} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  center: {flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#E8ECF1'},
-  title: {marginTop: 12, color: '#0A1A2F', fontWeight: '700'},
-  tag: {color: '#0A1A2F', opacity: 0.7, marginTop: 4},
+  center: {flex: 1, justifyContent: 'center', alignItems: 'center'},
+  title: {marginTop: 12, fontWeight: '700'},
+  tag: {opacity: 0.7, marginTop: 4},
   spin: {marginTop: 24},
   err: {color: '#B00020', padding: 24, textAlign: 'center'},
 });

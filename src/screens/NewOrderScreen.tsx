@@ -1,6 +1,19 @@
 import React, {useState, useCallback} from 'react';
 import {View, FlatList, StyleSheet, ScrollView} from 'react-native';
-import {Text, Button, IconButton, TextInput, FAB, Portal, Dialog, useTheme, Chip, Checkbox} from 'react-native-paper';
+import {
+  Text,
+  Button,
+  IconButton,
+  TextInput,
+  FAB,
+  Portal,
+  Dialog,
+  useTheme,
+  Chip,
+  Checkbox,
+  Surface,
+} from 'react-native-paper';
+import {foodReceiptLayout, listCardSurface} from '../theme/foodReceiptLayout';
 import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useDraftOrderStore} from '../stores/draftOrderStore';
@@ -86,7 +99,8 @@ export default function NewOrderScreen() {
           <Text style={styles.empty}>Tap + to add items (name & base price), then add toppings per line.</Text>
         }
         renderItem={({item}) => (
-          <View style={styles.row}>
+          <Surface style={[listCardSurface, styles.cardElev]} elevation={2}>
+            <View style={styles.row}>
             <View style={{flex: 1}}>
               <Text variant="titleSmall">{item.itemName}</Text>
               <Text variant="bodySmall" style={{opacity: 0.7}}>
@@ -119,7 +133,8 @@ export default function NewOrderScreen() {
               onPress={() => updateLine(item.tempId, {quantity: item.quantity + 1})}
             />
             <IconButton icon="delete" iconColor="#c62828" onPress={() => removeLine(item.tempId)} />
-          </View>
+            </View>
+          </Surface>
         )}
       />
 
@@ -149,7 +164,12 @@ export default function NewOrderScreen() {
         Review & checkout
       </Button>
 
-      <FAB icon="plus" style={[styles.fab, {backgroundColor: theme.colors.primary}]} color="#fff" onPress={() => setDialog(true)} />
+      <FAB
+        icon="plus"
+        style={[styles.fab, {backgroundColor: theme.colors.primary, bottom: foodReceiptLayout.fabOffsetBottom}]}
+        color="#fff"
+        onPress={() => setDialog(true)}
+      />
 
       <Portal>
         <Dialog visible={dialog} onDismiss={() => setDialog(false)}>
@@ -218,13 +238,11 @@ export default function NewOrderScreen() {
 const styles = StyleSheet.create({
   root: {flex: 1, padding: 16},
   pad: {marginBottom: 8},
+  cardElev: {backgroundColor: '#FFFFFF'},
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#fff',
-    borderRadius: 12,
     padding: 8,
-    marginBottom: 8,
   },
   chips: {flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6},
   chip: {height: 28},
@@ -232,5 +250,5 @@ const styles = StyleSheet.create({
   input: {marginBottom: 12, backgroundColor: '#fff'},
   totals: {gap: 4, marginBottom: 12},
   next: {borderRadius: 12, marginBottom: 80},
-  fab: {position: 'absolute', right: 16, bottom: 16},
+  fab: {position: 'absolute', right: 16},
 });

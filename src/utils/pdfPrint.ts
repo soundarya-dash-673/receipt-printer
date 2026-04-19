@@ -3,10 +3,12 @@
  * Uses react-native-html-to-pdf to convert receipt HTML → PDF.
  * Uses react-native-share to share the PDF file.
  */
+import {Platform} from 'react-native';
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import Share from 'react-native-share';
 import type {ReceiptPayload} from './receiptTemplate';
 import {buildReceiptHTML} from './receiptTemplate';
+import {openHtmlPrintWindow} from './webHtmlPrint';
 
 export interface PrintResult {
   success: boolean;
@@ -17,6 +19,10 @@ export interface PrintResult {
 export async function exportReceiptAsPDF(payload: ReceiptPayload): Promise<PrintResult> {
   try {
     const html = buildReceiptHTML(payload);
+    if (Platform.OS === 'web') {
+      const ok = openHtmlPrintWindow(html);
+      return ok ? {success: true, filePath: 'browser-print'} : {success: false, error: 'Could not open print window'};
+    }
     const fileName = `slipgo_${payload.orderNumber}_${Date.now()}`;
 
     const options = {
