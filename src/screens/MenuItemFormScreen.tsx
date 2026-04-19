@@ -71,12 +71,16 @@ export default function MenuItemFormScreen() {
     if (!validate()) {return;}
     const cleanedToppings = toppings
       .filter(t => t.name.trim().length > 0)
-      .map(t => ({
-        id: t.id,
-        name: t.name.trim(),
-        price: Math.max(0, Math.round((parseFloat(String(t.price)) || 0) * 100) / 100),
-        includedByDefault: !!t.includedByDefault,
-      }));
+      .map(t => {
+        const required = !!t.required;
+        return {
+          id: t.id,
+          name: t.name.trim(),
+          price: Math.max(0, Math.round((parseFloat(String(t.price)) || 0) * 100) / 100),
+          required,
+          includedByDefault: required || !!t.includedByDefault,
+        };
+      });
     const data = {
       name: name.trim(),
       price: parseFloat(parseFloat(price).toFixed(2)),
@@ -95,7 +99,7 @@ export default function MenuItemFormScreen() {
   const addToppingRow = () => {
     setToppings(prev => [
       ...prev,
-      {id: uuidv4(), name: '', price: 0, includedByDefault: false},
+      {id: uuidv4(), name: '', price: 0, required: false, includedByDefault: false},
     ]);
   };
 
@@ -186,18 +190,18 @@ export default function MenuItemFormScreen() {
         />
 
         <Text variant="titleSmall" style={styles.toppingsTitle}>
-          Toppings (optional)
+          Ingredients & add-ons (optional)
         </Text>
         <Text variant="bodySmall" style={styles.toppingsHint}>
-          Set price to $0 for free options. Turn on &quot;On by default&quot; for standard inclusions
-          (often $0); extras stay off until the customer adds them.
+          Define what customers can change on this dish. Required items can&apos;t be removed.
+          &quot;On by default&quot; pre-selects optional ingredients; turn off for paid extras only.
         </Text>
 
         {toppings.map((t, index) => (
           <View key={t.id} style={[styles.toppingRow, {borderColor: theme.colors.outline}]}>
             <View style={styles.toppingFields}>
               <TextInput
-                label="Topping name"
+                label="Ingredient name"
                 value={t.name}
                 onChangeText={txt => updateTopping(index, {name: txt})}
                 mode="outlined"
@@ -223,14 +227,35 @@ export default function MenuItemFormScreen() {
               <View style={styles.defaultSwitchRow}>
                 <View style={styles.defaultSwitchText}>
                   <Text variant="bodySmall" style={{color: theme.colors.onSurface}}>
-                    On by default
+                    Required (always in dish)
                   </Text>
                   <Text variant="labelSmall" style={{color: theme.colors.onSurfaceVariant}}>
-                    Pre-selected when ordering (uncheck extras)
+                    Customer cannot remove; still shows on receipt
                   </Text>
                 </View>
                 <Switch
-                  value={!!t.includedByDefault}
+                  value={!!t.required}
+                  onValueChange={v =>
+                    updateTopping(index, {
+                      required: v,
+                      ...(v ? {includedByDefault: true} : {}),
+                    })
+                  }
+                  color={theme.colors.primary}
+                />
+              </View>
+              <View style={styles.defaultSwitchRow}>
+                <View style={styles.defaultSwitchText}>
+                  <Text variant="bodySmall" style={{color: theme.colors.onSurface}}>
+                    On by default
+                  </Text>
+                  <Text variant="labelSmall" style={{color: theme.colors.onSurfaceVariant}}>
+                    Pre-selected for optional ingredients
+                  </Text>
+                </View>
+                <Switch
+                  value={!!t.required || !!t.includedByDefault}
+                  disabled={!!t.required}
                   onValueChange={v => updateTopping(index, {includedByDefault: v})}
                   color={theme.colors.primary}
                 />
@@ -246,7 +271,7 @@ export default function MenuItemFormScreen() {
         ))}
 
         <Button mode="outlined" icon="plus" onPress={addToppingRow} style={styles.addToppingBtn}>
-          Add topping
+          Add ingredient
         </Button>
 
         {/* Buttons */}

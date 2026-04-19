@@ -78,7 +78,7 @@ function MenuStackNavigator() {
       <MenuStack.Screen
         name="MenuItemCustomize"
         component={CustomizeItemScreen}
-        options={{title: 'Toppings'}}
+        options={{title: 'Ingredients'}}
       />
     </MenuStack.Navigator>
   );
@@ -99,7 +99,7 @@ function CartStackNavigator() {
       <CartStack.Screen
         name="MenuItemCustomize"
         component={CustomizeItemScreen}
-        options={{title: 'Toppings'}}
+        options={{title: 'Ingredients'}}
       />
     </CartStack.Navigator>
   );

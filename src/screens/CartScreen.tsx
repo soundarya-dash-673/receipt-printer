@@ -111,7 +111,7 @@ export default function CartScreen() {
                 style={styles.toppingsLinkIcon}
               />
               <Text variant="labelMedium" style={{color: theme.colors.primary}}>
-                Toppings
+                Ingredients
               </Text>
             </TouchableOpacity>
           ) : null}

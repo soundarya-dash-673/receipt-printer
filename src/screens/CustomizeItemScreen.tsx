@@ -1,9 +1,10 @@
 import React, {useMemo, useState, useCallback, useLayoutEffect} from 'react';
 import {View, ScrollView, StyleSheet} from 'react-native';
 import {Text, Button, Checkbox, useTheme, Divider} from 'react-native-paper';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {useApp, SelectedTopping, unitPriceForLine} from '../context/AppContext';
+import {useApp, MenuTopping, SelectedTopping, unitPriceForLine} from '../context/AppContext';
 import {formatToppingPriceLabel} from '../utils/toppingPrice';
 
 type CustomizeNavParams = {
@@ -15,6 +16,32 @@ type CustomizeNavParams = {
 };
 type RouteT = RouteProp<CustomizeNavParams, 'MenuItemCustomize'>;
 type Nav = NativeStackNavigationProp<CustomizeNavParams, 'MenuItemCustomize'>;
+
+function buildSelectedToppings(
+  toppingList: MenuTopping[],
+  selectedIds: Set<string>,
+): SelectedTopping[] {
+  const byId = new Map<string, SelectedTopping>();
+  for (const t of toppingList) {
+    if (t.required) {
+      byId.set(t.id, {
+        id: t.id,
+        name: t.name,
+        price: Number(t.price) || 0,
+      });
+    }
+  }
+  for (const t of toppingList) {
+    if (!t.required && selectedIds.has(t.id)) {
+      byId.set(t.id, {
+        id: t.id,
+        name: t.name,
+        price: Number(t.price) || 0,
+      });
+    }
+  }
+  return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
+}
 
 export default function CustomizeItemScreen() {
   const theme = useTheme();
@@ -35,7 +62,7 @@ export default function CustomizeItemScreen() {
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: replaceCartLineId ? 'Edit toppings' : 'Add toppings',
+      title: replaceCartLineId ? 'Edit ingredients' : 'Customize',
     });
   }, [navigation, replaceCartLineId]);
 
@@ -44,51 +71,60 @@ export default function CustomizeItemScreen() {
       setSelectedIds(new Set());
       return;
     }
-    if (replaceCartLineId != null && initialSelectedIds != null) {
-      setSelectedIds(new Set(initialSelectedIds));
+    const requiredIds = menuItem.toppings.filter(t => t.required).map(t => t.id);
+
+    if (replaceCartLineId != null) {
+      const fromLine =
+        initialSelectedIds != null
+          ? initialSelectedIds
+          : menuItem.toppings
+              .filter(t => t.includedByDefault || t.required)
+              .map(t => t.id);
+      setSelectedIds(new Set([...new Set([...fromLine, ...requiredIds])]));
       return;
     }
+
     const defaults = menuItem.toppings
-      .filter(t => t.includedByDefault)
+      .filter(t => t.includedByDefault || t.required)
       .map(t => t.id);
     setSelectedIds(new Set(defaults));
   }, [menuItem?.id, menuItem?.toppings, replaceCartLineId, initialSelectedIds]);
 
-  const toggle = useCallback((id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
+  const toggle = useCallback(
+    (id: string) => {
+      if (toppingList.find(t => t.id === id)?.required) {
+        return;
       }
-      return next;
-    });
-  }, []);
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+    },
+    [toppingList],
+  );
 
-  const selectedToppings: SelectedTopping[] = useMemo(() => {
-    if (!menuItem) {
-      return [];
-    }
-    return toppingList
-      .filter(t => selectedIds.has(t.id))
-      .map(t => ({
-        id: t.id,
-        name: t.name,
-        price: Number(t.price) || 0,
-      }));
-  }, [menuItem, toppingList, selectedIds]);
+  const selectedToppings: SelectedTopping[] = useMemo(
+    () => buildSelectedToppings(toppingList, selectedIds),
+    [toppingList, selectedIds],
+  );
 
-  const unitPrice = menuItem
-    ? unitPriceForLine(menuItem, selectedToppings)
-    : 0;
+  const unitPrice = menuItem ? unitPriceForLine(menuItem, selectedToppings) : 0;
 
-  const standardToppings = useMemo(
-    () => toppingList.filter(t => t.includedByDefault),
+  const requiredToppings = useMemo(
+    () => toppingList.filter(t => t.required),
+    [toppingList],
+  );
+  const standardOptional = useMemo(
+    () => toppingList.filter(t => t.includedByDefault && !t.required),
     [toppingList],
   );
   const extraToppings = useMemo(
-    () => toppingList.filter(t => !t.includedByDefault),
+    () => toppingList.filter(t => !t.includedByDefault && !t.required),
     [toppingList],
   );
 
@@ -119,7 +155,7 @@ export default function CustomizeItemScreen() {
     return (
       <View style={[styles.center, {backgroundColor: theme.colors.background}]}>
         <Text variant="bodyMedium" style={{textAlign: 'center', paddingHorizontal: 24}}>
-          This item has no toppings. It will be added with the base price.
+          This item has no ingredients or add-ons. It will be added at the base price.
         </Text>
         <Button
           mode="contained"
@@ -138,6 +174,16 @@ export default function CustomizeItemScreen() {
     );
   }
 
+  const renderPrice = (price: number) => (
+    <Text
+      variant="labelMedium"
+      style={{
+        color: Number(price) <= 0 ? theme.colors.tertiary : theme.colors.primary,
+      }}>
+      {formatToppingPriceLabel(price)}
+    </Text>
+  );
+
   return (
     <ScrollView
       style={[styles.flex, {backgroundColor: theme.colors.background}]}
@@ -147,17 +193,47 @@ export default function CustomizeItemScreen() {
         {menuItem.name}
       </Text>
       <Text variant="bodySmall" style={[styles.sub, {color: theme.colors.secondary}]}>
-        Base ${menuItem.price.toFixed(2)} · adjust standard items or add extras
+        Base ${menuItem.price.toFixed(2)} · required items stay on the dish
       </Text>
 
       <Divider style={styles.divider} />
 
-      {standardToppings.length > 0 ? (
+      {requiredToppings.length > 0 ? (
         <>
           <Text variant="labelLarge" style={[styles.sectionLabel, {color: theme.colors.primary}]}>
-            Standard (included — uncheck to remove)
+            Always included
           </Text>
-          {standardToppings.map(t => {
+          {requiredToppings.map(t => (
+            <View
+              key={t.id}
+              style={[styles.row, styles.rowLocked, {backgroundColor: theme.colors.surface}]}>
+              <MaterialCommunityIcons name="lock" size={22} color={theme.colors.outline} />
+              <View style={styles.rowText}>
+                <Text variant="bodyLarge">{t.name}</Text>
+                <Text variant="labelSmall" style={{color: theme.colors.onSurfaceVariant}}>
+                  Cannot remove
+                </Text>
+                {renderPrice(Number(t.price) || 0)}
+              </View>
+            </View>
+          ))}
+        </>
+      ) : null}
+
+      {standardOptional.length > 0 ? (
+        <>
+          <Text
+            variant="labelLarge"
+            style={[
+              styles.sectionLabel,
+              {
+                color: theme.colors.primary,
+                marginTop: requiredToppings.length ? 12 : 0,
+              },
+            ]}>
+            Standard (uncheck to remove)
+          </Text>
+          {standardOptional.map(t => {
             const checked = selectedIds.has(t.id);
             return (
               <View
@@ -170,13 +246,7 @@ export default function CustomizeItemScreen() {
                 />
                 <View style={styles.rowText}>
                   <Text variant="bodyLarge">{t.name}</Text>
-                  <Text
-                    variant="labelMedium"
-                    style={{
-                      color: Number(t.price) <= 0 ? theme.colors.tertiary : theme.colors.primary,
-                    }}>
-                    {formatToppingPriceLabel(t.price)}
-                  </Text>
+                  {renderPrice(Number(t.price) || 0)}
                 </View>
               </View>
             );
@@ -190,7 +260,11 @@ export default function CustomizeItemScreen() {
             variant="labelLarge"
             style={[
               styles.sectionLabel,
-              {color: theme.colors.primary, marginTop: standardToppings.length ? 12 : 0},
+              {
+                color: theme.colors.primary,
+                marginTop:
+                  requiredToppings.length || standardOptional.length ? 12 : 0,
+              },
             ]}>
             Extras & add-ons
           </Text>
@@ -207,13 +281,7 @@ export default function CustomizeItemScreen() {
                 />
                 <View style={styles.rowText}>
                   <Text variant="bodyLarge">{t.name}</Text>
-                  <Text
-                    variant="labelMedium"
-                    style={{
-                      color: Number(t.price) <= 0 ? theme.colors.tertiary : theme.colors.primary,
-                    }}>
-                    {formatToppingPriceLabel(t.price)}
-                  </Text>
+                  {renderPrice(Number(t.price) || 0)}
                 </View>
               </View>
             );
@@ -255,6 +323,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 8,
   },
+  rowLocked: {paddingLeft: 12},
   rowText: {flex: 1, marginLeft: 4},
   sectionLabel: {marginBottom: 8, fontWeight: '700'},
   summary: {

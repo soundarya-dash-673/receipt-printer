@@ -11,12 +11,14 @@ import {v4 as uuidv4} from 'uuid';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-/** Configured on a menu item; price 0 means the topping is free. */
+/** Configured on a menu item (ingredient / add-on). Price 0 = free. */
 export interface MenuTopping {
   id: string;
   name: string;
   price: number;
-  /** Pre-checked when ordering; use with price 0 for standard inclusions, or with a price for paid defaults. */
+  /** Always part of the dish; customer cannot remove (e.g. base sauce). */
+  required?: boolean;
+  /** Pre-checked when ordering for optional ingredients; ignored if required. */
   includedByDefault?: boolean;
 }
 
@@ -86,11 +88,15 @@ function selectionKey(
 function migrateCartItem(raw: any, index: number): CartItem {
   const menuItem: MenuItem = {
     ...raw.menuItem,
-    toppings: (raw.menuItem?.toppings ?? []).map((t: MenuTopping) => ({
-      ...t,
-      price: Number(t.price) || 0,
-      includedByDefault: !!t.includedByDefault,
-    })),
+    toppings: (raw.menuItem?.toppings ?? []).map((t: MenuTopping) => {
+      const required = !!t.required;
+      return {
+        ...t,
+        price: Number(t.price) || 0,
+        required,
+        includedByDefault: !!t.includedByDefault || required,
+      };
+    }),
   };
   const selectedToppings: SelectedTopping[] = (raw.selectedToppings ?? []).map(
     (t: SelectedTopping) => ({
@@ -108,11 +114,15 @@ function migrateCartItem(raw: any, index: number): CartItem {
 }
 
 function normalizeMenuItem(m: MenuItem): MenuItem {
-  const tops = (m.toppings ?? []).map(t => ({
-    ...t,
-    price: Number(t.price) || 0,
-    includedByDefault: !!t.includedByDefault,
-  }));
+  const tops = (m.toppings ?? []).map(t => {
+    const required = !!t.required;
+    return {
+      ...t,
+      price: Number(t.price) || 0,
+      required,
+      includedByDefault: !!t.includedByDefault || required,
+    };
+  });
   return {...m, toppings: tops};
 }
 
@@ -207,12 +217,14 @@ export function AppProvider({children}: {children: ReactNode}) {
                   id: sauceId,
                   name: 'Classic tomato sauce',
                   price: 0,
+                  required: true,
                   includedByDefault: true,
                 },
                 {
                   id: mozzId,
                   name: 'Fresh mozzarella',
                   price: 0,
+                  required: true,
                   includedByDefault: true,
                 },
                 {

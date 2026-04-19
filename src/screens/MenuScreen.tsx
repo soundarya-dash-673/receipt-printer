@@ -92,11 +92,11 @@ export default function MenuScreen() {
                 {item.description}
               </Text>
             ) : null}
-            {item.toppings?.some(t => t.includedByDefault) ? (
+            {item.toppings?.some(t => t.required || t.includedByDefault) ? (
               <Text variant="labelSmall" style={styles.includesLine} numberOfLines={2}>
                 Includes:{' '}
                 {item.toppings
-                  .filter(t => t.includedByDefault)
+                  .filter(t => t.required || t.includedByDefault)
                   .map(t => t.name)
                   .join(', ')}
               </Text>
