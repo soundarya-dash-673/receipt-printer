@@ -8,11 +8,15 @@ import React, {
   ReactNode,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {ensureSchema} from '../db/database';
+import {upsertUserForSession} from '../db/userIdentity';
 
 const SESSION_KEY = '@slipgo_auth_session';
 
 export interface AuthSession {
   phone: string;
+  /** SQLite user row id (newer sessions) */
+  userId?: string;
 }
 
 interface AuthContextType {
@@ -48,7 +52,10 @@ export function AuthProvider({children}: {children: ReactNode}) {
         if (!cancelled && raw) {
           const parsed = JSON.parse(raw) as AuthSession;
           if (parsed?.phone) {
-            setSession(parsed);
+            setSession({
+              phone: parsed.phone,
+              userId: typeof parsed.userId === 'string' ? parsed.userId : undefined,
+            });
           }
         }
       } catch {
@@ -72,8 +79,14 @@ export function AuthProvider({children}: {children: ReactNode}) {
     if (password.length < 6) {
       return {ok: false as const, message: 'Password must be at least 6 characters.'};
     }
-    const next: AuthSession = {phone: maskPhone(digits)};
-    await AsyncStorage.setItem(SESSION_KEY, JSON.stringify({phone: next.phone}));
+    ensureSchema();
+    const displayPhone = maskPhone(digits);
+    const userId = await upsertUserForSession(digits, displayPhone);
+    const next: AuthSession = {phone: displayPhone, userId};
+    await AsyncStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify({phone: next.phone, userId: next.userId}),
+    );
     setSession(next);
     return {ok: true as const};
   }, []);

@@ -8,6 +8,15 @@ import React, {
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {v4 as uuidv4} from 'uuid';
+import {useAuth} from './AuthContext';
+import {ensureSchema} from '../db/database';
+import {migrateOrdersFromAsyncStorageIfNeeded} from '../db/migrateOrdersFromAsyncStorage';
+import {
+  clearAllOrders as dbClearAllOrders,
+  deleteOrderById,
+  loadOrders,
+  insertOrder as dbInsertOrder,
+} from '../db/ordersRepository';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -55,6 +64,8 @@ export interface Order {
   note?: string;
   /** Omitted on orders saved before this field existed */
   paymentMethod?: PaymentMethod;
+  /** Set when order is tied to a signed-in user (SQLite) */
+  userId?: string;
 }
 
 export interface Settings {
@@ -87,34 +98,6 @@ function selectionKey(
 ): string {
   const ids = [...(selected ?? []).map(t => t.id)].sort((a, b) => a.localeCompare(b));
   return `${menuItemId}|${ids.join(',')}`;
-}
-
-function migrateCartItem(raw: any, index: number): CartItem {
-  const menuItem: MenuItem = {
-    ...raw.menuItem,
-    toppings: (raw.menuItem?.toppings ?? []).map((t: MenuTopping) => {
-      const required = !!t.required;
-      return {
-        ...t,
-        price: Number(t.price) || 0,
-        required,
-        includedByDefault: !!t.includedByDefault || required,
-      };
-    }),
-  };
-  const selectedToppings: SelectedTopping[] = (raw.selectedToppings ?? []).map(
-    (t: SelectedTopping) => ({
-      id: t.id,
-      name: t.name,
-      price: Number(t.price) || 0,
-    }),
-  );
-  return {
-    cartLineId: raw.cartLineId ?? `legacy-${menuItem.id}-${index}`,
-    menuItem,
-    quantity: raw.quantity ?? 1,
-    selectedToppings,
-  };
 }
 
 function normalizeMenuItem(m: MenuItem): MenuItem {
@@ -157,7 +140,7 @@ interface AppContextType {
 
   // Orders
   orders: Order[];
-  placeOrder: (note?: string, paymentMethod?: PaymentMethod) => Order;
+  placeOrder: (note?: string, paymentMethod?: PaymentMethod) => Promise<Order>;
   deleteOrder: (id: string) => void;
   clearAllOrders: () => void;
 
@@ -179,13 +162,13 @@ const AppContext = createContext<AppContextType | null>(null);
 // ─── Keys ────────────────────────────────────────────────────────────────────
 const STORAGE_KEYS = {
   MENU: '@food_receipt_menu',
-  ORDERS: '@food_receipt_orders',
   SETTINGS: '@food_receipt_settings',
 };
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 
 export function AppProvider({children}: {children: ReactNode}) {
+  const {session} = useAuth();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -195,9 +178,12 @@ export function AppProvider({children}: {children: ReactNode}) {
   useEffect(() => {
     const load = async () => {
       try {
-        const [menuRaw, ordersRaw, settingsRaw] = await Promise.all([
+        ensureSchema();
+        await migrateOrdersFromAsyncStorageIfNeeded();
+        setOrders(await loadOrders());
+
+        const [menuRaw, settingsRaw] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEYS.MENU),
-          AsyncStorage.getItem(STORAGE_KEYS.ORDERS),
           AsyncStorage.getItem(STORAGE_KEYS.SETTINGS),
         ]);
 
@@ -282,15 +268,6 @@ export function AppProvider({children}: {children: ReactNode}) {
           await AsyncStorage.setItem(STORAGE_KEYS.MENU, JSON.stringify(seed));
         }
 
-        if (ordersRaw) {
-          const parsed: Order[] = JSON.parse(ordersRaw);
-          setOrders(
-            parsed.map(o => ({
-              ...o,
-              items: o.items.map((ci, i) => migrateCartItem(ci, i)),
-            })),
-          );
-        }
         if (settingsRaw) {setSettings({...defaultSettings, ...JSON.parse(settingsRaw)});}
       } catch (e) {
         console.warn('Failed to load app data', e);
@@ -302,10 +279,6 @@ export function AppProvider({children}: {children: ReactNode}) {
   // ── Persist helpers ───────────────────────────────────────────────────────
   const persistMenu = useCallback(async (items: MenuItem[]) => {
     await AsyncStorage.setItem(STORAGE_KEYS.MENU, JSON.stringify(items));
-  }, []);
-
-  const persistOrders = useCallback(async (items: Order[]) => {
-    await AsyncStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(items));
   }, []);
 
   const persistSettings = useCallback(async (s: Settings) => {
@@ -437,7 +410,7 @@ export function AppProvider({children}: {children: ReactNode}) {
 
   // ── Order Actions ─────────────────────────────────────────────────────────
   const placeOrder = useCallback(
-    (note?: string, paymentMethod: PaymentMethod = 'cash'): Order => {
+    async (note?: string, paymentMethod: PaymentMethod = 'cash'): Promise<Order> => {
       /** Immutable snapshot with numeric topping prices (avoids bad totals from string/coercion bugs). */
       const lineSnapshots: CartItem[] = cartItems.map(ci => ({
         cartLineId: ci.cartLineId,
@@ -469,30 +442,25 @@ export function AppProvider({children}: {children: ReactNode}) {
         restaurantName: settings.restaurantName,
         note,
         paymentMethod,
+        userId: session?.userId,
       };
-      setOrders(prev => {
-        const updated = [order, ...prev];
-        persistOrders(updated);
-        return updated;
-      });
+      await dbInsertOrder(order);
+      setOrders(prev => [order, ...prev]);
       setCartItems([]);
       return order;
     },
-    [cartItems, settings.taxRate, settings.restaurantName, persistOrders],
+    [cartItems, settings.taxRate, settings.restaurantName, session?.userId],
   );
 
   const deleteOrder = useCallback((id: string) => {
-    setOrders(prev => {
-      const updated = prev.filter(o => o.id !== id);
-      persistOrders(updated);
-      return updated;
-    });
-  }, [persistOrders]);
+    deleteOrderById(id);
+    setOrders(prev => prev.filter(o => o.id !== id));
+  }, []);
 
   const clearAllOrders = useCallback(() => {
+    dbClearAllOrders();
     setOrders([]);
-    persistOrders([]);
-  }, [persistOrders]);
+  }, []);
 
   // ── Settings Actions ──────────────────────────────────────────────────────
   const updateSettings = useCallback((partial: Partial<Settings>) => {

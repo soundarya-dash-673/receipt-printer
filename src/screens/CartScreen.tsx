@@ -82,11 +82,15 @@ export default function CartScreen() {
     }
   }, [showMenu]);
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (cartItems.length === 0) {return;}
-    const order = placeOrder(note.trim() || undefined, paymentMethod);
-    setNote('');
-    navigation.navigate('Receipt', {orderId: order.id});
+    try {
+      const order = await placeOrder(note.trim() || undefined, paymentMethod);
+      setNote('');
+      navigation.navigate('Receipt', {orderId: order.id});
+    } catch (e) {
+      console.warn('placeOrder failed', e);
+    }
   };
 
   const renderCartItem = ({item}: {item: CartItem}) => {

@@ -3,7 +3,14 @@ import type {NavigatorScreenParams} from '@react-navigation/native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {useTheme} from 'react-native-paper';
-import {View, Text, StyleSheet, Platform, ActivityIndicator} from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Platform,
+  ActivityIndicator,
+  Pressable,
+} from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import MenuScreen from '../screens/MenuScreen';
@@ -11,6 +18,7 @@ import MenuItemFormScreen from '../screens/MenuItemFormScreen';
 import CustomizeItemScreen from '../screens/CustomizeItemScreen';
 import CartScreen from '../screens/CartScreen';
 import OrderHistoryScreen from '../screens/OrderHistoryScreen';
+import DailySalesScreen from '../screens/DailySalesScreen';
 import ReceiptScreen from '../screens/ReceiptScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import LoginScreen from '../screens/LoginScreen';
@@ -41,6 +49,7 @@ export type CartStackParamList = {
 
 export type HistoryStackParamList = {
   OrderHistory: undefined;
+  DailySales: undefined;
   Receipt: {orderId: string};
 };
 
@@ -119,7 +128,24 @@ function HistoryStackNavigator() {
       <HistoryStack.Screen
         name="OrderHistory"
         component={OrderHistoryScreen}
-        options={{title: 'Order History'}}
+        options={({navigation}) => ({
+          title: 'Order History',
+          headerRight: () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Sales and income"
+              onPress={() => navigation.navigate('DailySales')}
+              hitSlop={12}
+              style={{marginRight: 10}}>
+              <MaterialCommunityIcons name="chart-line" size={24} color="#fff" />
+            </Pressable>
+          ),
+        })}
+      />
+      <HistoryStack.Screen
+        name="DailySales"
+        component={DailySalesScreen}
+        options={{title: 'Sales & income'}}
       />
       <HistoryStack.Screen
         name="Receipt"

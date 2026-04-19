@@ -948,6 +948,10 @@ PODS:
     - React-Core
   - react-native-html-to-pdf (0.12.0):
     - React-Core
+  - react-native-quick-sqlite (7.0.0):
+    - React
+    - React-callinvoker
+    - React-Core
   - react-native-safe-area-context (4.14.1):
     - React-Core
   - react-native-webview (13.16.1):
@@ -1194,6 +1198,7 @@ DEPENDENCIES:
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - react-native-get-random-values (from `../node_modules/react-native-get-random-values`)
   - react-native-html-to-pdf (from `../node_modules/react-native-html-to-pdf`)
+  - react-native-quick-sqlite (from `../node_modules/react-native-quick-sqlite`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - react-native-webview (from `../node_modules/react-native-webview`)
   - React-nativeconfig (from `../node_modules/react-native/ReactCommon`)
@@ -1299,6 +1304,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-get-random-values"
   react-native-html-to-pdf:
     :path: "../node_modules/react-native-html-to-pdf"
+  react-native-quick-sqlite:
+    :path: "../node_modules/react-native-quick-sqlite"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
   react-native-webview:
@@ -1398,6 +1405,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: 15dfcfeb4428d8799cce75e7fe85b18b706029e0
   react-native-get-random-values: d16467cf726c618e9c7a8c3c39c31faa2244bbba
   react-native-html-to-pdf: 7a49e6c58ac5221bcc093027b195f4b214f27a9d
+  react-native-quick-sqlite: 08915586a6a7b9e0beeb197e099c833d5c454f3b
   react-native-safe-area-context: 758e894ca5a9bd1868d2a9cfbca7326a2b6bf9dc
   react-native-webview: b4342af6dfd07f2eb97bfa0df2b08f1260d795e5
   React-nativeconfig: b4d4e9901d4cabb57be63053fd2aa6086eb3c85f
