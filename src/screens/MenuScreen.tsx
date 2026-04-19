@@ -18,7 +18,6 @@ import {
   Portal,
   Dialog,
   Button,
-  Surface,
 } from 'react-native-paper';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -86,7 +85,13 @@ export default function MenuScreen() {
           <View style={styles.actionsRow}>
             <TouchableOpacity
               style={[styles.actionBtn, {backgroundColor: '#E8F5E9'}]}
-              onPress={() => addToCart(item)}>
+              onPress={() => {
+                if (item.toppings && item.toppings.length > 0) {
+                  navigation.navigate('MenuItemCustomize', {itemId: item.id});
+                } else {
+                  addToCart(item, []);
+                }
+              }}>
               <MaterialCommunityIcons name="cart-plus" size={18} color="#2E7D32" />
             </TouchableOpacity>
             <TouchableOpacity
@@ -166,11 +171,9 @@ export default function MenuScreen() {
   const ListEmpty = useCallback(
     () => (
       <View style={styles.emptyState}>
-        <Surface
-          style={[styles.emptyIconWrap, {backgroundColor: theme.colors.surfaceVariant}]}
-          elevation={0}>
+        <View style={[styles.emptyIconWrap, {backgroundColor: theme.colors.surfaceVariant}]}>
           <MaterialCommunityIcons name="silverware-fork-knife" size={40} color={theme.colors.primary} />
-        </Surface>
+        </View>
         <Text variant="titleLarge" style={[styles.emptyTitle, {color: theme.colors.onSurface}]}>
           {menuItems.length === 0 ? 'Your menu is empty' : 'No matches'}
         </Text>

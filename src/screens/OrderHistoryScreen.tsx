@@ -49,7 +49,12 @@ export default function OrderHistoryScreen() {
     const q = search.toLowerCase();
     return (
       o.id.slice(-6).toLowerCase().includes(q) ||
-      o.items.some(ci => ci.menuItem.name.toLowerCase().includes(q)) ||
+      o.items.some(ci => {
+        const toppingHit = (ci.selectedToppings ?? []).some(t =>
+          t.name.toLowerCase().includes(q),
+        );
+        return ci.menuItem.name.toLowerCase().includes(q) || toppingHit;
+      }) ||
       (o.note ?? '').toLowerCase().includes(q)
     );
   });
@@ -57,7 +62,13 @@ export default function OrderHistoryScreen() {
   const totalRevenue = orders.reduce((s, o) => s + o.total, 0);
 
   const renderOrder = ({item: order}: {item: Order}) => {
-    const itemNames = order.items.map(ci => `${ci.menuItem.name} ×${ci.quantity}`).join(', ');
+    const itemNames = order.items
+      .map(ci => {
+        const n = (ci.selectedToppings ?? []).length;
+        const hint = n > 0 ? ` (+${n})` : '';
+        return `${ci.menuItem.name}${hint} ×${ci.quantity}`;
+      })
+      .join(', ');
     return (
       <TouchableOpacity
         style={[styles.card, {backgroundColor: theme.colors.surface}]}

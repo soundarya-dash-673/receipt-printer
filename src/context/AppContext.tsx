@@ -11,17 +11,30 @@ import {v4 as uuidv4} from 'uuid';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+/** Configured on a menu item; price 0 means the topping is free. */
+export interface MenuTopping {
+  id: string;
+  name: string;
+  price: number;
+}
+
+/** Snapshot stored on cart / order lines (immutable after add). */
+export type SelectedTopping = MenuTopping;
+
 export interface MenuItem {
   id: string;
   name: string;
   price: number;
   category: string;
   description?: string;
+  toppings?: MenuTopping[];
 }
 
 export interface CartItem {
+  cartLineId: string;
   menuItem: MenuItem;
   quantity: number;
+  selectedToppings: SelectedTopping[];
 }
 
 export interface Order {
@@ -44,6 +57,61 @@ export interface Settings {
   thankYouMessage: string;
 }
 
+/** Base + selected topping prices for one unit (coerces stored/string prices safely). */
+export function unitPriceForLine(
+  menuItem: MenuItem,
+  selected: SelectedTopping[] | undefined | null,
+): number {
+  const base = Number(menuItem?.price);
+  const safeBase = Number.isFinite(base) ? base : 0;
+  const list = selected ?? [];
+  const extra = list.reduce((sum, t) => {
+    const p = Number(t?.price);
+    const n = Number.isFinite(p) ? Math.max(0, p) : 0;
+    return sum + n;
+  }, 0);
+  return safeBase + extra;
+}
+
+function selectionKey(
+  menuItemId: string,
+  selected: SelectedTopping[] | undefined | null,
+): string {
+  const ids = [...(selected ?? []).map(t => t.id)].sort((a, b) => a.localeCompare(b));
+  return `${menuItemId}|${ids.join(',')}`;
+}
+
+function migrateCartItem(raw: any, index: number): CartItem {
+  const menuItem: MenuItem = {
+    ...raw.menuItem,
+    toppings: (raw.menuItem?.toppings ?? []).map((t: MenuTopping) => ({
+      ...t,
+      price: Number(t.price) || 0,
+    })),
+  };
+  const selectedToppings: SelectedTopping[] = (raw.selectedToppings ?? []).map(
+    (t: SelectedTopping) => ({
+      id: t.id,
+      name: t.name,
+      price: Number(t.price) || 0,
+    }),
+  );
+  return {
+    cartLineId: raw.cartLineId ?? `legacy-${menuItem.id}-${index}`,
+    menuItem,
+    quantity: raw.quantity ?? 1,
+    selectedToppings,
+  };
+}
+
+function normalizeMenuItem(m: MenuItem): MenuItem {
+  const tops = (m.toppings ?? []).map(t => ({
+    ...t,
+    price: Number(t.price) || 0,
+  }));
+  return {...m, toppings: tops};
+}
+
 // ─── Context ─────────────────────────────────────────────────────────────────
 
 interface AppContextType {
@@ -55,9 +123,9 @@ interface AppContextType {
 
   // Cart
   cartItems: CartItem[];
-  addToCart: (item: MenuItem) => void;
-  removeFromCart: (itemId: string) => void;
-  updateCartQuantity: (itemId: string, quantity: number) => void;
+  addToCart: (item: MenuItem, selectedToppings?: SelectedTopping[]) => void;
+  removeFromCart: (cartLineId: string) => void;
+  updateCartQuantity: (cartLineId: string, quantity: number) => void;
   clearCart: () => void;
   cartSubtotal: number;
   cartTaxAmount: number;
@@ -110,11 +178,24 @@ export function AppProvider({children}: {children: ReactNode}) {
         ]);
 
         if (menuRaw) {
-          setMenuItems(JSON.parse(menuRaw));
+          const parsed: MenuItem[] = JSON.parse(menuRaw);
+          setMenuItems(parsed.map(normalizeMenuItem));
         } else {
-          // Seed with sample items
+          const cheeseId = uuidv4();
+          const olivesId = uuidv4();
+          const pepId = uuidv4();
           const seed: MenuItem[] = [
-            {id: uuidv4(), name: 'Margherita Pizza', price: 12.99, category: 'Mains'},
+            {
+              id: uuidv4(),
+              name: 'Margherita Pizza',
+              price: 12.99,
+              category: 'Mains',
+              toppings: [
+                {id: cheeseId, name: 'Extra cheese', price: 1.5},
+                {id: olivesId, name: 'Olives', price: 0},
+                {id: pepId, name: 'Pepperoni', price: 2.0},
+              ],
+            },
             {id: uuidv4(), name: 'Chicken Burger', price: 9.99, category: 'Mains'},
             {id: uuidv4(), name: 'Caesar Salad', price: 7.49, category: 'Starters'},
             {id: uuidv4(), name: 'French Fries', price: 3.99, category: 'Sides'},
@@ -125,7 +206,15 @@ export function AppProvider({children}: {children: ReactNode}) {
           await AsyncStorage.setItem(STORAGE_KEYS.MENU, JSON.stringify(seed));
         }
 
-        if (ordersRaw) {setOrders(JSON.parse(ordersRaw));}
+        if (ordersRaw) {
+          const parsed: Order[] = JSON.parse(ordersRaw);
+          setOrders(
+            parsed.map(o => ({
+              ...o,
+              items: o.items.map((ci, i) => migrateCartItem(ci, i)),
+            })),
+          );
+        }
         if (settingsRaw) {setSettings({...defaultSettings, ...JSON.parse(settingsRaw)});}
       } catch (e) {
         console.warn('Failed to load app data', e);
@@ -149,7 +238,10 @@ export function AppProvider({children}: {children: ReactNode}) {
 
   // ── Menu Actions ──────────────────────────────────────────────────────────
   const addMenuItem = useCallback((item: Omit<MenuItem, 'id'>) => {
-    const newItem: MenuItem = {...item, id: uuidv4()};
+    const newItem: MenuItem = normalizeMenuItem({
+      ...item,
+      id: uuidv4(),
+    });
     setMenuItems(prev => {
       const updated = [...prev, newItem];
       persistMenu(updated);
@@ -158,15 +250,15 @@ export function AppProvider({children}: {children: ReactNode}) {
   }, [persistMenu]);
 
   const updateMenuItem = useCallback((item: MenuItem) => {
+    const normalized = normalizeMenuItem(item);
     setMenuItems(prev => {
-      const updated = prev.map(m => m.id === item.id ? item : m);
+      const updated = prev.map(m => m.id === normalized.id ? normalized : m);
       persistMenu(updated);
       return updated;
     });
-    // Also update in cart if present
     setCartItems(prev =>
       prev.map(ci =>
-        ci.menuItem.id === item.id ? {...ci, menuItem: item} : ci,
+        ci.menuItem.id === normalized.id ? {...ci, menuItem: normalized} : ci,
       ),
     );
   }, [persistMenu]);
@@ -181,31 +273,43 @@ export function AppProvider({children}: {children: ReactNode}) {
   }, [persistMenu]);
 
   // ── Cart Actions ──────────────────────────────────────────────────────────
-  const addToCart = useCallback((item: MenuItem) => {
+  const addToCart = useCallback((item: MenuItem, selectedToppings: SelectedTopping[] = []) => {
+    const menuItem = normalizeMenuItem(item);
+    const toppings = [...selectedToppings].sort((a, b) => a.id.localeCompare(b.id));
+    const key = selectionKey(menuItem.id, toppings);
+
     setCartItems(prev => {
-      const existing = prev.find(ci => ci.menuItem.id === item.id);
+      const existing = prev.find(
+        ci => selectionKey(ci.menuItem.id, ci.selectedToppings ?? []) === key,
+      );
       if (existing) {
         return prev.map(ci =>
-          ci.menuItem.id === item.id
+          selectionKey(ci.menuItem.id, ci.selectedToppings ?? []) === key
             ? {...ci, quantity: ci.quantity + 1}
             : ci,
         );
       }
-      return [...prev, {menuItem: item, quantity: 1}];
+      const line: CartItem = {
+        cartLineId: uuidv4(),
+        menuItem,
+        quantity: 1,
+        selectedToppings: toppings,
+      };
+      return [...prev, line];
     });
   }, []);
 
-  const removeFromCart = useCallback((itemId: string) => {
-    setCartItems(prev => prev.filter(ci => ci.menuItem.id !== itemId));
+  const removeFromCart = useCallback((cartLineId: string) => {
+    setCartItems(prev => prev.filter(ci => ci.cartLineId !== cartLineId));
   }, []);
 
-  const updateCartQuantity = useCallback((itemId: string, quantity: number) => {
+  const updateCartQuantity = useCallback((cartLineId: string, quantity: number) => {
     if (quantity <= 0) {
-      setCartItems(prev => prev.filter(ci => ci.menuItem.id !== itemId));
+      setCartItems(prev => prev.filter(ci => ci.cartLineId !== cartLineId));
     } else {
       setCartItems(prev =>
         prev.map(ci =>
-          ci.menuItem.id === itemId ? {...ci, quantity} : ci,
+          ci.cartLineId === cartLineId ? {...ci, quantity} : ci,
         ),
       );
     }
@@ -216,23 +320,43 @@ export function AppProvider({children}: {children: ReactNode}) {
   }, []);
 
   // ── Cart Totals ───────────────────────────────────────────────────────────
-  const cartSubtotal = cartItems.reduce(
-    (sum, ci) => sum + ci.menuItem.price * ci.quantity,
-    0,
-  );
+  const cartSubtotal = cartItems.reduce((sum, ci) => {
+    const unit = unitPriceForLine(ci.menuItem, ci.selectedToppings ?? []);
+    return sum + unit * ci.quantity;
+  }, 0);
   const cartTaxAmount = cartSubtotal * (settings.taxRate / 100);
   const cartTotal = cartSubtotal + cartTaxAmount;
 
   // ── Order Actions ─────────────────────────────────────────────────────────
   const placeOrder = useCallback(
     (note?: string): Order => {
+      /** Immutable snapshot with numeric topping prices (avoids bad totals from string/coercion bugs). */
+      const lineSnapshots: CartItem[] = cartItems.map(ci => ({
+        cartLineId: ci.cartLineId,
+        menuItem: normalizeMenuItem(ci.menuItem),
+        quantity: ci.quantity,
+        selectedToppings: (ci.selectedToppings ?? []).map(t => ({
+          id: t.id,
+          name: t.name,
+          price: Number(t.price) || 0,
+        })),
+      }));
+
+      const computedSubtotal = lineSnapshots.reduce(
+        (sum, ci) =>
+          sum + unitPriceForLine(ci.menuItem, ci.selectedToppings) * ci.quantity,
+        0,
+      );
+      const taxAmount = computedSubtotal * (settings.taxRate / 100);
+      const total = computedSubtotal + taxAmount;
+
       const order: Order = {
         id: uuidv4(),
-        items: cartItems,
-        subtotal: cartSubtotal,
+        items: lineSnapshots,
+        subtotal: computedSubtotal,
         taxRate: settings.taxRate,
-        taxAmount: cartTaxAmount,
-        total: cartTotal,
+        taxAmount,
+        total,
         createdAt: new Date().toISOString(),
         restaurantName: settings.restaurantName,
         note,
@@ -245,7 +369,7 @@ export function AppProvider({children}: {children: ReactNode}) {
       setCartItems([]);
       return order;
     },
-    [cartItems, cartSubtotal, cartTaxAmount, cartTotal, settings, persistOrders],
+    [cartItems, settings.taxRate, settings.restaurantName, persistOrders],
   );
 
   const deleteOrder = useCallback((id: string) => {

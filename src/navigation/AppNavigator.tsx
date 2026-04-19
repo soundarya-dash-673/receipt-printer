@@ -7,6 +7,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 
 import MenuScreen from '../screens/MenuScreen';
 import MenuItemFormScreen from '../screens/MenuItemFormScreen';
+import CustomizeItemScreen from '../screens/CustomizeItemScreen';
 import CartScreen from '../screens/CartScreen';
 import OrderHistoryScreen from '../screens/OrderHistoryScreen';
 import ReceiptScreen from '../screens/ReceiptScreen';
@@ -20,11 +21,13 @@ import {useAuth} from '../context/AuthContext';
 export type MenuStackParamList = {
   MenuList: undefined;
   MenuItemForm: {itemId?: string};
+  MenuItemCustomize: {itemId: string};
 };
 
 export type CartStackParamList = {
   Cart: undefined;
   Receipt: {orderId: string};
+  MenuItemCustomize: {itemId: string};
 };
 
 export type HistoryStackParamList = {
@@ -64,6 +67,11 @@ function MenuStackNavigator() {
         component={MenuItemFormScreen}
         options={({route}) => ({title: route.params?.itemId ? 'Edit Item' : 'Add Item'})}
       />
+      <MenuStack.Screen
+        name="MenuItemCustomize"
+        component={CustomizeItemScreen}
+        options={{title: 'Customize'}}
+      />
     </MenuStack.Navigator>
   );
 }
@@ -80,6 +88,11 @@ function CartStackNavigator() {
       }}>
       <CartStack.Screen name="Cart" component={CartScreen} options={{title: 'Order'}} />
       <CartStack.Screen name="Receipt" component={ReceiptScreen} options={{title: 'Receipt'}} />
+      <CartStack.Screen
+        name="MenuItemCustomize"
+        component={CustomizeItemScreen}
+        options={{title: 'Customize'}}
+      />
     </CartStack.Navigator>
   );
 }

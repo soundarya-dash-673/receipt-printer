@@ -73,108 +73,114 @@ export default function SettingsScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
 
-        {/* Restaurant Info */}
-        <Surface style={styles.section} elevation={1}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="store" size={20} color={theme.colors.primary} />
-            <Text variant="titleSmall" style={styles.sectionTitle}>Restaurant Information</Text>
-          </View>
-          <Divider style={styles.divider} />
+        {/* Restaurant Info — overflow on inner View so Surface shadow works (Paper) */}
+        <Surface style={styles.sectionCard} elevation={1}>
+          <View style={styles.sectionInner}>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="store" size={20} color={theme.colors.primary} />
+              <Text variant="titleSmall" style={styles.sectionTitle}>Restaurant Information</Text>
+            </View>
+            <Divider style={styles.divider} />
 
-          <TextInput
-            label="Restaurant Name"
-            value={restaurantName}
-            onChangeText={setRestaurantName}
-            mode="outlined"
-            style={styles.input}
-            left={<TextInput.Icon icon="store" />}
-          />
-          <TextInput
-            label="Address"
-            value={address}
-            onChangeText={setAddress}
-            mode="outlined"
-            style={styles.input}
-            left={<TextInput.Icon icon="map-marker" />}
-          />
-          <TextInput
-            label="Phone Number"
-            value={phone}
-            onChangeText={setPhone}
-            mode="outlined"
-            style={styles.input}
-            keyboardType="phone-pad"
-            left={<TextInput.Icon icon="phone" />}
-          />
-          <TextInput
-            label="Thank You Message"
-            value={thankYouMessage}
-            onChangeText={setThankYouMessage}
-            mode="outlined"
-            style={styles.input}
-            left={<TextInput.Icon icon="heart" />}
-          />
+            <TextInput
+              label="Restaurant Name"
+              value={restaurantName}
+              onChangeText={setRestaurantName}
+              mode="outlined"
+              style={styles.input}
+              left={<TextInput.Icon icon="store" />}
+            />
+            <TextInput
+              label="Address"
+              value={address}
+              onChangeText={setAddress}
+              mode="outlined"
+              style={styles.input}
+              left={<TextInput.Icon icon="map-marker" />}
+            />
+            <TextInput
+              label="Phone Number"
+              value={phone}
+              onChangeText={setPhone}
+              mode="outlined"
+              style={styles.input}
+              keyboardType="phone-pad"
+              left={<TextInput.Icon icon="phone" />}
+            />
+            <TextInput
+              label="Thank You Message"
+              value={thankYouMessage}
+              onChangeText={setThankYouMessage}
+              mode="outlined"
+              style={styles.input}
+              left={<TextInput.Icon icon="heart" />}
+            />
+          </View>
         </Surface>
 
         {/* Tax Settings */}
-        <Surface style={styles.section} elevation={1}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="percent" size={20} color={theme.colors.primary} />
-            <Text variant="titleSmall" style={styles.sectionTitle}>Tax Settings</Text>
-          </View>
-          <Divider style={styles.divider} />
+        <Surface style={styles.sectionCard} elevation={1}>
+          <View style={styles.sectionInner}>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="percent" size={20} color={theme.colors.primary} />
+              <Text variant="titleSmall" style={styles.sectionTitle}>Tax Settings</Text>
+            </View>
+            <Divider style={styles.divider} />
 
-          <TextInput
-            label="Tax Rate (%)"
-            value={taxRate}
-            onChangeText={t => {setTaxRate(t); setTaxError('');}}
-            mode="outlined"
-            style={styles.input}
-            keyboardType="decimal-pad"
-            error={!!taxError}
-            left={<TextInput.Icon icon="percent" />}
-            right={<TextInput.Affix text="%" />}
-          />
-          {taxError ? <Text style={styles.errorText}>{taxError}</Text> : null}
+            <TextInput
+              label="Tax Rate (%)"
+              value={taxRate}
+              onChangeText={t => {setTaxRate(t); setTaxError('');}}
+              mode="outlined"
+              style={styles.input}
+              keyboardType="decimal-pad"
+              error={!!taxError}
+              left={<TextInput.Icon icon="percent" />}
+              right={<TextInput.Affix text="%" />}
+            />
+            {taxError ? <Text style={styles.errorText}>{taxError}</Text> : null}
 
-          <View style={[styles.taxPreview, {backgroundColor: theme.colors.primary + '10'}]}>
-            <Text variant="bodySmall" style={{color: theme.colors.onSurfaceVariant}}>
-              Example: $100.00 order
-            </Text>
-            <Text variant="bodyMedium" style={{fontWeight: '600'}}>
-              Tax: ${(100 * (parseFloat(taxRate) || 0) / 100).toFixed(2)} →
-              Total: ${(100 + 100 * (parseFloat(taxRate) || 0) / 100).toFixed(2)}
-            </Text>
+            <View style={[styles.taxPreview, {backgroundColor: theme.colors.primary + '10'}]}>
+              <Text variant="bodySmall" style={{color: theme.colors.onSurfaceVariant}}>
+                Example: $100.00 order
+              </Text>
+              <Text variant="bodyMedium" style={{fontWeight: '600'}}>
+                Tax: ${(100 * (parseFloat(taxRate) || 0) / 100).toFixed(2)} →
+                Total: ${(100 + 100 * (parseFloat(taxRate) || 0) / 100).toFixed(2)}
+              </Text>
+            </View>
           </View>
         </Surface>
 
         {/* Stats */}
-        <Surface style={styles.section} elevation={1}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="chart-bar" size={20} color={theme.colors.primary} />
-            <Text variant="titleSmall" style={styles.sectionTitle}>App Statistics</Text>
-          </View>
-          <Divider style={styles.divider} />
+        <Surface style={styles.sectionCard} elevation={1}>
+          <View style={styles.sectionInner}>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="chart-bar" size={20} color={theme.colors.primary} />
+              <Text variant="titleSmall" style={styles.sectionTitle}>App Statistics</Text>
+            </View>
+            <Divider style={styles.divider} />
 
-          <View style={styles.statsGrid}>
-            <StatCard
-              icon="food-fork-drink"
-              label="Menu Items"
-              value={menuItems.length.toString()}
-              color={theme.colors.primary}
-            />
-            <StatCard
-              icon="receipt"
-              label="Total Orders"
-              value={orders.length.toString()}
-              color={theme.colors.tertiary}
-            />
-            <StatCard
-              icon="currency-usd"
-              label="Total Revenue"
-              value={`$${totalRevenue.toFixed(2)}`}
-              color="#2E7D32"
-            />
+            <View style={styles.statsGrid}>
+              <StatCard
+                icon="food-fork-drink"
+                label="Menu Items"
+                value={menuItems.length.toString()}
+                color={theme.colors.primary}
+              />
+              <StatCard
+                icon="receipt"
+                label="Total Orders"
+                value={orders.length.toString()}
+                color={theme.colors.tertiary}
+              />
+              <StatCard
+                icon="currency-usd"
+                label="Total Revenue"
+                value={`$${totalRevenue.toFixed(2)}`}
+                color="#2E7D32"
+              />
+            </View>
           </View>
         </Surface>
 
@@ -190,39 +196,43 @@ export default function SettingsScreen() {
         </Button>
 
         {/* Account */}
-        <Surface style={styles.section} elevation={1}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="account-circle-outline" size={20} color={theme.colors.primary} />
-            <Text variant="titleSmall" style={styles.sectionTitle}>Account</Text>
+        <Surface style={styles.sectionCard} elevation={1}>
+          <View style={styles.sectionInner}>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="account-circle-outline" size={20} color={theme.colors.primary} />
+              <Text variant="titleSmall" style={styles.sectionTitle}>Account</Text>
+            </View>
+            <Divider style={styles.divider} />
+            {session?.phone ? (
+              <Text variant="bodyMedium" style={styles.signedInAs}>
+                Signed in as {session.phone}
+              </Text>
+            ) : null}
+            <Button mode="outlined" icon="logout" onPress={logout} textColor={theme.colors.primary} style={styles.logoutBtn}>
+              Sign out
+            </Button>
           </View>
-          <Divider style={styles.divider} />
-          {session?.phone ? (
-            <Text variant="bodyMedium" style={styles.signedInAs}>
-              Signed in as {session.phone}
-            </Text>
-          ) : null}
-          <Button mode="outlined" icon="logout" onPress={logout} textColor={theme.colors.primary} style={styles.logoutBtn}>
-            Sign out
-          </Button>
         </Surface>
 
         {/* Danger Zone */}
-        <Surface style={[styles.section, styles.dangerSection]} elevation={1}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="alert" size={20} color="#C62828" />
-            <Text variant="titleSmall" style={[styles.sectionTitle, {color: '#C62828'}]}>
-              Danger Zone
-            </Text>
+        <Surface style={[styles.sectionCard, styles.dangerSection]} elevation={1}>
+          <View style={styles.sectionInner}>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="alert" size={20} color="#C62828" />
+              <Text variant="titleSmall" style={[styles.sectionTitle, {color: '#C62828'}]}>
+                Danger Zone
+              </Text>
+            </View>
+            <Divider style={styles.divider} />
+            <Button
+              mode="outlined"
+              icon="trash-can"
+              onPress={clearAllOrders}
+              textColor="#C62828"
+              style={{borderColor: '#C62828'}}>
+              Clear All Order History
+            </Button>
           </View>
-          <Divider style={styles.divider} />
-          <Button
-            mode="outlined"
-            icon="trash-can"
-            onPress={clearAllOrders}
-            textColor="#C62828"
-            style={{borderColor: '#C62828'}}>
-            Clear All Order History
-          </Button>
         </Surface>
       </ScrollView>
 
@@ -265,7 +275,10 @@ const styles = StyleSheet.create({
   flex: {flex: 1},
   container: {flex: 1},
   content: {padding: 16, gap: 16, paddingBottom: 40},
-  section: {borderRadius: 12, padding: 16, overflow: 'hidden'},
+  /** Surface: only radius + shadow; no overflow:hidden here (Paper warning) */
+  sectionCard: {borderRadius: 12},
+  /** Clipping + padding live on inner View */
+  sectionInner: {borderRadius: 12, overflow: 'hidden', padding: 16},
   sectionHeader: {flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8},
   sectionTitle: {fontWeight: '700', color: '#424242'},
   divider: {marginBottom: 14},

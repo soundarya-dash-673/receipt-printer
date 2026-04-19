@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState} from 'react';
 import {
   View,
   ScrollView,
@@ -13,10 +13,12 @@ import {
   Text,
   HelperText,
   Chip,
+  IconButton,
 } from 'react-native-paper';
 import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {useApp} from '../context/AppContext';
+import {v4 as uuidv4} from 'uuid';
+import {useApp, MenuTopping} from '../context/AppContext';
 import {MenuStackParamList} from '../navigation/AppNavigator';
 
 type RouteType = RouteProp<MenuStackParamList, 'MenuItemForm'>;
@@ -38,6 +40,9 @@ export default function MenuItemFormScreen() {
   const [price, setPrice] = useState(editingItem?.price.toString() ?? '');
   const [category, setCategory] = useState(editingItem?.category ?? '');
   const [description, setDescription] = useState(editingItem?.description ?? '');
+  const [toppings, setToppings] = useState<MenuTopping[]>(() =>
+    editingItem?.toppings?.length ? editingItem.toppings.map(t => ({...t})) : [],
+  );
   const [errors, setErrors] = useState<{name?: string; price?: string; category?: string}>({});
 
   const validate = (): boolean => {
@@ -55,11 +60,19 @@ export default function MenuItemFormScreen() {
 
   const handleSave = () => {
     if (!validate()) {return;}
+    const cleanedToppings = toppings
+      .filter(t => t.name.trim().length > 0)
+      .map(t => ({
+        id: t.id,
+        name: t.name.trim(),
+        price: Math.max(0, Math.round((parseFloat(String(t.price)) || 0) * 100) / 100),
+      }));
     const data = {
       name: name.trim(),
       price: parseFloat(parseFloat(price).toFixed(2)),
       category: category.trim(),
       description: description.trim(),
+      toppings: cleanedToppings,
     };
     if (editingItem) {
       updateMenuItem({...editingItem, ...data});
@@ -67,6 +80,20 @@ export default function MenuItemFormScreen() {
       addMenuItem(data);
     }
     navigation.goBack();
+  };
+
+  const addToppingRow = () => {
+    setToppings(prev => [...prev, {id: uuidv4(), name: '', price: 0}]);
+  };
+
+  const updateTopping = (index: number, patch: Partial<MenuTopping>) => {
+    setToppings(prev =>
+      prev.map((t, i) => (i === index ? {...t, ...patch} : t)),
+    );
+  };
+
+  const removeTopping = (index: number) => {
+    setToppings(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -145,6 +172,54 @@ export default function MenuItemFormScreen() {
           left={<TextInput.Icon icon="text" />}
         />
 
+        <Text variant="titleSmall" style={styles.toppingsTitle}>
+          Toppings (optional)
+        </Text>
+        <Text variant="bodySmall" style={styles.toppingsHint}>
+          Set price to 0 for a free topping. Customers choose these when adding the item to the order.
+        </Text>
+
+        {toppings.map((t, index) => (
+          <View key={t.id} style={[styles.toppingRow, {borderColor: theme.colors.outline}]}>
+            <View style={styles.toppingFields}>
+              <TextInput
+                label="Topping name"
+                value={t.name}
+                onChangeText={txt => updateTopping(index, {name: txt})}
+                mode="outlined"
+                dense
+                style={styles.toppingName}
+                left={<TextInput.Icon icon="food-variant" />}
+              />
+              <TextInput
+                label="Price ($)"
+                value={t.price === 0 ? '' : String(t.price)}
+                onChangeText={txt => {
+                  const n = parseFloat(txt);
+                  updateTopping(index, {
+                    price: txt.trim() === '' || Number.isNaN(n) ? 0 : Math.max(0, n),
+                  });
+                }}
+                mode="outlined"
+                dense
+                keyboardType="decimal-pad"
+                style={styles.toppingPrice}
+                left={<TextInput.Icon icon="cash" />}
+              />
+            </View>
+            <IconButton
+              icon="close"
+              size={20}
+              onPress={() => removeTopping(index)}
+              style={styles.toppingRemove}
+            />
+          </View>
+        ))}
+
+        <Button mode="outlined" icon="plus" onPress={addToppingRow} style={styles.addToppingBtn}>
+          Add topping
+        </Button>
+
         {/* Buttons */}
         <View style={styles.buttons}>
           <Button
@@ -173,6 +248,21 @@ const styles = StyleSheet.create({
   suggestLabel: {marginTop: 4, marginBottom: 8, color: '#757575'},
   chipRow: {flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16},
   chip: {},
+  toppingsTitle: {marginTop: 20, marginBottom: 4, fontWeight: '600'},
+  toppingsHint: {color: '#757575', marginBottom: 12, lineHeight: 18},
+  toppingRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 10,
+    padding: 8,
+    marginBottom: 10,
+  },
+  toppingFields: {flex: 1, flexDirection: 'row', flexWrap: 'wrap'},
+  toppingName: {flex: 1, minWidth: 140, marginRight: 8},
+  toppingPrice: {width: 120},
+  toppingRemove: {margin: 0},
+  addToppingBtn: {marginBottom: 8},
   buttons: {flexDirection: 'row', gap: 12, marginTop: 24},
   btn: {flex: 1},
 });

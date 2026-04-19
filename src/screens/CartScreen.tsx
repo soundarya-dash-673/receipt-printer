@@ -20,7 +20,8 @@ import {
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import {useApp, CartItem, MenuItem} from '../context/AppContext';
+import {useApp, CartItem, MenuItem, unitPriceForLine} from '../context/AppContext';
+import {formatToppingPriceLabel} from '../utils/toppingPrice';
 import {CartStackParamList} from '../navigation/AppNavigator';
 
 type NavigationProp = NativeStackNavigationProp<CartStackParamList, 'Cart'>;
@@ -62,38 +63,51 @@ export default function CartScreen() {
     navigation.navigate('Receipt', {orderId: order.id});
   };
 
-  const renderCartItem = ({item}: {item: CartItem}) => (
-    <View style={[styles.cartRow, {backgroundColor: theme.colors.surface}]}>
-      <View style={styles.cartRowLeft}>
-        <Text variant="bodyLarge" style={styles.cartItemName}>{item.menuItem.name}</Text>
-        <Text variant="bodySmall" style={{color: theme.colors.secondary}}>
-          ${item.menuItem.price.toFixed(2)} each
+  const renderCartItem = ({item}: {item: CartItem}) => {
+    const unit = unitPriceForLine(item.menuItem, item.selectedToppings ?? []);
+    const toppings = item.selectedToppings ?? [];
+    return (
+      <View style={[styles.cartRow, {backgroundColor: theme.colors.surface}]}>
+        <View style={styles.cartRowLeft}>
+          <Text variant="bodyLarge" style={styles.cartItemName}>{item.menuItem.name}</Text>
+          <Text variant="bodySmall" style={{color: theme.colors.secondary}}>
+            ${unit.toFixed(2)} each
+          </Text>
+          {toppings.length > 0 ? (
+            <View style={styles.toppingList}>
+              {toppings.map(t => (
+                <Text key={t.id} variant="bodySmall" style={styles.toppingLine}>
+                  + {t.name} ({formatToppingPriceLabel(t.price)})
+                </Text>
+              ))}
+            </View>
+          ) : null}
+        </View>
+        <View style={styles.qtyControls}>
+          <TouchableOpacity
+            style={[styles.qtyBtn, {borderColor: theme.colors.primary}]}
+            onPress={() => updateCartQuantity(item.cartLineId, item.quantity - 1)}>
+            <MaterialCommunityIcons
+              name={item.quantity === 1 ? 'delete-outline' : 'minus'}
+              size={16}
+              color={item.quantity === 1 ? '#E53935' : theme.colors.primary}
+            />
+          </TouchableOpacity>
+          <Text style={[styles.qtyText, {color: theme.colors.onSurface}]}>
+            {item.quantity}
+          </Text>
+          <TouchableOpacity
+            style={[styles.qtyBtn, {borderColor: theme.colors.primary}]}
+            onPress={() => updateCartQuantity(item.cartLineId, item.quantity + 1)}>
+            <MaterialCommunityIcons name="plus" size={16} color={theme.colors.primary} />
+          </TouchableOpacity>
+        </View>
+        <Text variant="titleSmall" style={[styles.lineTotal, {color: theme.colors.primary}]}>
+          ${(unit * item.quantity).toFixed(2)}
         </Text>
       </View>
-      <View style={styles.qtyControls}>
-        <TouchableOpacity
-          style={[styles.qtyBtn, {borderColor: theme.colors.primary}]}
-          onPress={() => updateCartQuantity(item.menuItem.id, item.quantity - 1)}>
-          <MaterialCommunityIcons
-            name={item.quantity === 1 ? 'delete-outline' : 'minus'}
-            size={16}
-            color={item.quantity === 1 ? '#E53935' : theme.colors.primary}
-          />
-        </TouchableOpacity>
-        <Text style={[styles.qtyText, {color: theme.colors.onSurface}]}>
-          {item.quantity}
-        </Text>
-        <TouchableOpacity
-          style={[styles.qtyBtn, {borderColor: theme.colors.primary}]}
-          onPress={() => updateCartQuantity(item.menuItem.id, item.quantity + 1)}>
-          <MaterialCommunityIcons name="plus" size={16} color={theme.colors.primary} />
-        </TouchableOpacity>
-      </View>
-      <Text variant="titleSmall" style={[styles.lineTotal, {color: theme.colors.primary}]}>
-        ${(item.menuItem.price * item.quantity).toFixed(2)}
-      </Text>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
@@ -128,7 +142,14 @@ export default function CartScreen() {
             renderItem={({item}: {item: MenuItem}) => (
               <TouchableOpacity
                 style={[styles.quickChip, {borderColor: theme.colors.primary}]}
-                onPress={() => addToCart(item)}>
+                onPress={() => {
+                  if (item.toppings && item.toppings.length > 0) {
+                    navigation.navigate('MenuItemCustomize', {itemId: item.id});
+                    setShowMenu(false);
+                  } else {
+                    addToCart(item, []);
+                  }
+                }}>
                 <Text variant="labelSmall" numberOfLines={1} style={styles.quickChipName}>
                   {item.name}
                 </Text>
@@ -176,7 +197,7 @@ export default function CartScreen() {
             </View>
 
             {cartItems.map(item => (
-              <View key={item.menuItem.id}>
+              <View key={item.cartLineId}>
                 {renderCartItem({item})}
                 <View style={{height: 6}} />
               </View>
@@ -321,6 +342,8 @@ const styles = StyleSheet.create({
   },
   cartRowLeft: {flex: 1},
   cartItemName: {fontWeight: '500'},
+  toppingList: {marginTop: 4},
+  toppingLine: {color: '#616161', fontSize: 12},
   qtyControls: {flexDirection: 'row', alignItems: 'center', marginHorizontal: 8},
   qtyBtn: {
     width: 28,

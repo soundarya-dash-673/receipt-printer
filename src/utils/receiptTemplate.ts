@@ -1,4 +1,19 @@
-import {Order} from '../context/AppContext';
+import {Order, unitPriceForLine} from '../context/AppContext';
+
+/** Subtotal / tax / total derived from line items (source of truth for printed receipts). */
+export function computeReceiptTotals(order: Order): {
+  subtotal: number;
+  taxAmount: number;
+  total: number;
+} {
+  const subtotal = order.items.reduce((sum, ci) => {
+    const unit = unitPriceForLine(ci.menuItem, ci.selectedToppings ?? []);
+    return sum + unit * ci.quantity;
+  }, 0);
+  const taxAmount = subtotal * (order.taxRate / 100);
+  const total = subtotal + taxAmount;
+  return {subtotal, taxAmount, total};
+}
 
 /**
  * Generates an HTML string for a receipt.
@@ -17,20 +32,42 @@ export function buildReceiptHTML(order: Order): string {
     minute: '2-digit',
   });
 
+  const totals = computeReceiptTotals(order);
+
   const itemRows = order.items
-    .map(
-      ci => `
+    .map(ci => {
+      const selected = ci.selectedToppings ?? [];
+      const unit = unitPriceForLine(ci.menuItem, selected);
+      const lineTotal = unit * ci.quantity;
+      const toppingRows =
+        selected.length > 0
+          ? selected
+              .map(
+                t => {
+                  const p = Number(t.price) || 0;
+                  const priceCell = p <= 0 ? 'FREE' : `$${p.toFixed(2)}`;
+                  return `
+      <tr class="topping-row">
+        <td colspan="2" class="topping-name">+ ${escapeHtml(t.name)}</td>
+        <td class="topping-price">${priceCell}</td>
+      </tr>`;
+                },
+              )
+              .join('')
+          : '';
+      return `
       <tr>
         <td class="item-name">${escapeHtml(ci.menuItem.name)}</td>
         <td class="item-qty">x${ci.quantity}</td>
-        <td class="item-price">$${(ci.menuItem.price * ci.quantity).toFixed(2)}</td>
+        <td class="item-price">$${lineTotal.toFixed(2)}</td>
       </tr>
+      ${toppingRows}
       <tr class="sub-row">
-        <td colspan="2" class="item-unit">$${ci.menuItem.price.toFixed(2)} each</td>
+        <td colspan="2" class="item-unit">$${unit.toFixed(2)} each</td>
         <td></td>
       </tr>
-    `,
-    )
+    `;
+    })
     .join('');
 
   const noteSection = order.note
@@ -95,6 +132,9 @@ export function buildReceiptHTML(order: Order): string {
     .item-price { font-size: 13px; text-align: right; font-weight: bold; color: #1a1a1a; }
     .sub-row td { padding-bottom: 6px; }
     .item-unit { font-size: 10px; color: #888; }
+    .topping-row td { padding: 2px 0 2px 10px; font-size: 11px; }
+    .topping-name { color: #444; }
+    .topping-price { text-align: right; color: #666; }
     .totals-table td { padding: 3px 0; font-size: 13px; }
     .totals-table .label { color: #444; }
     .totals-table .value { text-align: right; font-weight: bold; }
@@ -155,15 +195,15 @@ export function buildReceiptHTML(order: Order): string {
       <tbody>
         <tr>
           <td class="label">Subtotal</td>
-          <td class="value">$${order.subtotal.toFixed(2)}</td>
+          <td class="value">$${totals.subtotal.toFixed(2)}</td>
         </tr>
         <tr class="tax-row">
           <td class="label">Tax (${order.taxRate}%)</td>
-          <td class="value">$${order.taxAmount.toFixed(2)}</td>
+          <td class="value">$${totals.taxAmount.toFixed(2)}</td>
         </tr>
         <tr class="total-row">
           <td class="label"><strong>TOTAL</strong></td>
-          <td class="value"><strong>$${order.total.toFixed(2)}</strong></td>
+          <td class="value"><strong>$${totals.total.toFixed(2)}</strong></td>
         </tr>
       </tbody>
     </table>
@@ -182,12 +222,20 @@ export function buildReceiptHTML(order: Order): string {
 </html>`;
 }
 
+export interface EscPosItemLine {
+  name: string;
+  qty: number;
+  price: string;
+  unitPrice: string;
+  toppingLines?: Array<{name: string; priceLabel: string}>;
+}
+
 /**
  * Generates ESC/POS-compatible text commands for thermal printer.
  */
 export function buildESCPOSData(order: Order): {
   header: string;
-  items: Array<{name: string; qty: number; price: string; unitPrice: string}>;
+  items: EscPosItemLine[];
   subtotal: string;
   tax: string;
   total: string;
@@ -203,17 +251,35 @@ export function buildESCPOSData(order: Order): {
     year: 'numeric',
   })} ${date.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'})}`;
 
-  return {
-    header: order.restaurantName,
-    items: order.items.map(ci => ({
+  const totals = computeReceiptTotals(order);
+
+  const items: EscPosItemLine[] = order.items.map(ci => {
+    const selected = ci.selectedToppings ?? [];
+    const unit = unitPriceForLine(ci.menuItem, selected);
+    return {
       name: ci.menuItem.name,
       qty: ci.quantity,
-      price: `$${(ci.menuItem.price * ci.quantity).toFixed(2)}`,
-      unitPrice: `$${ci.menuItem.price.toFixed(2)}`,
-    })),
-    subtotal: `$${order.subtotal.toFixed(2)}`,
-    tax: `$${order.taxAmount.toFixed(2)} (${order.taxRate}%)`,
-    total: `$${order.total.toFixed(2)}`,
+      price: `$${(unit * ci.quantity).toFixed(2)}`,
+      unitPrice: `$${unit.toFixed(2)}`,
+      toppingLines:
+        selected.length > 0
+          ? selected.map(t => {
+              const p = Number(t.price) || 0;
+              return {
+                name: t.name,
+                priceLabel: p <= 0 ? 'FREE' : `$${p.toFixed(2)}`,
+              };
+            })
+          : undefined,
+    };
+  });
+
+  return {
+    header: order.restaurantName,
+    items,
+    subtotal: `$${totals.subtotal.toFixed(2)}`,
+    tax: `$${totals.taxAmount.toFixed(2)} (${order.taxRate}%)`,
+    total: `$${totals.total.toFixed(2)}`,
     footer: 'Thank you! Please come again.',
     orderId: order.id.slice(-8).toUpperCase(),
     dateStr,

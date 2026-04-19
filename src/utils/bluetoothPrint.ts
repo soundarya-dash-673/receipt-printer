@@ -1,6 +1,9 @@
 /**
  * Bluetooth ESC/POS thermal printer utility.
- * Uses @brooons/react-native-bluetooth-escpos-printer.
+ *
+ * Import the local shim — NOT the package entry — upstream index.js assigns
+ * BluetoothTscPrinter.DIRECTION at load time and crashes when the native
+ * module is null (simulator / missing native build). Metro alias is a fallback.
  *
  * Supported printers: Any ESC/POS compatible Bluetooth thermal printer
  * (Epson, Star Micronics, HOIN, Rongta, etc.)
@@ -8,7 +11,7 @@
 import {
   BluetoothManager,
   BluetoothEscposPrinter,
-} from '@brooons/react-native-bluetooth-escpos-printer';
+} from '../shims/bluetooth-escpos-printer';
 import {Platform, PermissionsAndroid} from 'react-native';
 import {Order} from '../context/AppContext';
 import {buildESCPOSData} from './receiptTemplate';
@@ -154,6 +157,13 @@ export async function printReceiptViaBluetooth(order: Order): Promise<BTResult> 
         `${nameLine.padEnd(20)}${qtyPrice}${lineTotal}\n`,
         {},
       );
+      if (item.toppingLines?.length) {
+        for (const tl of item.toppingLines) {
+          const sub = `  + ${truncate(tl.name, 18)}`;
+          const tag = tl.priceLabel.padStart(8);
+          await BluetoothEscposPrinter.printText(`${sub.padEnd(28)}${tag}\n`, {});
+        }
+      }
     }
 
     await BluetoothEscposPrinter.printText('--------------------------------\n', {});
