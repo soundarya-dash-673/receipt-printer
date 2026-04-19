@@ -66,6 +66,8 @@ export default function CartScreen() {
   const renderCartItem = ({item}: {item: CartItem}) => {
     const unit = unitPriceForLine(item.menuItem, item.selectedToppings ?? []);
     const toppings = item.selectedToppings ?? [];
+    const hasToppingOptions =
+      !!item.menuItem.toppings && item.menuItem.toppings.length > 0;
     return (
       <View style={[styles.cartRow, {backgroundColor: theme.colors.surface}]}>
         <View style={styles.cartRowLeft}>
@@ -73,6 +75,28 @@ export default function CartScreen() {
           <Text variant="bodySmall" style={{color: theme.colors.secondary}}>
             ${unit.toFixed(2)} each
           </Text>
+          {hasToppingOptions ? (
+            <TouchableOpacity
+              style={styles.toppingsLink}
+              onPress={() =>
+                navigation.navigate('MenuItemCustomize', {
+                  itemId: item.menuItem.id,
+                  replaceCartLineId: item.cartLineId,
+                  initialSelectedIds: toppings.map(t => t.id),
+                })
+              }
+              hitSlop={{top: 6, bottom: 6, left: 4, right: 4}}>
+              <MaterialCommunityIcons
+                name="tune-variant"
+                size={16}
+                color={theme.colors.primary}
+                style={styles.toppingsLinkIcon}
+              />
+              <Text variant="labelMedium" style={{color: theme.colors.primary}}>
+                Toppings
+              </Text>
+            </TouchableOpacity>
+          ) : null}
           {toppings.length > 0 ? (
             <View style={styles.toppingList}>
               {toppings.map(t => (
@@ -118,7 +142,7 @@ export default function CartScreen() {
           <MaterialCommunityIcons name="food" size={size} color={theme.colors.primary} />
         )}
         actions={[{label: 'Close', onPress: () => setShowMenu(false)}]}>
-        Quick add items to your order
+        Tap an item — if it has toppings, you&apos;ll choose them before it&apos;s added.
       </Banner>
 
       {/* Quick Add Menu Panel */}
@@ -139,25 +163,33 @@ export default function CartScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.quickChips}
-            renderItem={({item}: {item: MenuItem}) => (
-              <TouchableOpacity
-                style={[styles.quickChip, {borderColor: theme.colors.primary}]}
-                onPress={() => {
-                  if (item.toppings && item.toppings.length > 0) {
-                    navigation.navigate('MenuItemCustomize', {itemId: item.id});
-                    setShowMenu(false);
-                  } else {
-                    addToCart(item, []);
-                  }
-                }}>
-                <Text variant="labelSmall" numberOfLines={1} style={styles.quickChipName}>
-                  {item.name}
-                </Text>
-                <Text variant="labelSmall" style={{color: theme.colors.primary}}>
-                  ${item.price.toFixed(2)}
-                </Text>
-              </TouchableOpacity>
-            )}
+            renderItem={({item}: {item: MenuItem}) => {
+              const customizable = !!(item.toppings && item.toppings.length > 0);
+              return (
+                <TouchableOpacity
+                  style={[styles.quickChip, {borderColor: theme.colors.primary}]}
+                  onPress={() => {
+                    if (customizable) {
+                      navigation.navigate('MenuItemCustomize', {itemId: item.id});
+                      setShowMenu(false);
+                    } else {
+                      addToCart(item, []);
+                    }
+                  }}>
+                  <Text variant="labelSmall" numberOfLines={1} style={styles.quickChipName}>
+                    {item.name}
+                  </Text>
+                  <Text variant="labelSmall" style={{color: theme.colors.primary}}>
+                    ${item.price.toFixed(2)}
+                  </Text>
+                  {customizable ? (
+                    <Text variant="labelSmall" style={styles.quickChipHint}>
+                      + toppings
+                    </Text>
+                  ) : null}
+                </TouchableOpacity>
+              );
+            }}
           />
         </View>
       )}
@@ -174,7 +206,7 @@ export default function CartScreen() {
             <MaterialCommunityIcons name="cart-outline" size={80} color="#BDBDBD" />
             <Text variant="titleMedium" style={styles.emptyText}>Your order is empty</Text>
             <Text variant="bodySmall" style={styles.emptySubText}>
-              Add items from the Menu tab or use Quick Add below
+              Use Quick Add below — items with toppings open a picker before they&apos;re added.
             </Text>
             <Button
               mode="contained"
@@ -342,6 +374,13 @@ const styles = StyleSheet.create({
   },
   cartRowLeft: {flex: 1},
   cartItemName: {fontWeight: '500'},
+  toppingsLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginTop: 6,
+  },
+  toppingsLinkIcon: {marginRight: 6},
   toppingList: {marginTop: 4},
   toppingLine: {color: '#616161', fontSize: 12},
   qtyControls: {flexDirection: 'row', alignItems: 'center', marginHorizontal: 8},
@@ -396,6 +435,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   quickChipName: {fontWeight: '600', marginBottom: 2},
+  quickChipHint: {color: '#757575', fontSize: 10, marginTop: 2},
   floatingAdd: {
     position: 'absolute',
     right: 16,

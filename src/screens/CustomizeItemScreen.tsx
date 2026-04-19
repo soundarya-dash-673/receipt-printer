@@ -6,7 +6,13 @@ import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useApp, SelectedTopping, unitPriceForLine} from '../context/AppContext';
 import {formatToppingPriceLabel} from '../utils/toppingPrice';
 
-type CustomizeNavParams = {MenuItemCustomize: {itemId: string}};
+type CustomizeNavParams = {
+  MenuItemCustomize: {
+    itemId: string;
+    replaceCartLineId?: string;
+    initialSelectedIds?: string[];
+  };
+};
 type RouteT = RouteProp<CustomizeNavParams, 'MenuItemCustomize'>;
 type Nav = NativeStackNavigationProp<CustomizeNavParams, 'MenuItemCustomize'>;
 
@@ -14,7 +20,10 @@ export default function CustomizeItemScreen() {
   const theme = useTheme();
   const navigation = useNavigation<Nav>();
   const route = useRoute<RouteT>();
-  const {menuItems, addToCart} = useApp();
+  const {menuItems, addToCart, replaceCartLine} = useApp();
+
+  const replaceCartLineId = route.params.replaceCartLineId;
+  const initialSelectedIds = route.params.initialSelectedIds;
 
   const menuItem = useMemo(
     () => menuItems.find(m => m.id === route.params.itemId),
@@ -25,15 +34,25 @@ export default function CustomizeItemScreen() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
   useLayoutEffect(() => {
+    navigation.setOptions({
+      title: replaceCartLineId ? 'Edit toppings' : 'Add toppings',
+    });
+  }, [navigation, replaceCartLineId]);
+
+  useLayoutEffect(() => {
     if (!menuItem?.toppings?.length) {
       setSelectedIds(new Set());
+      return;
+    }
+    if (replaceCartLineId != null && initialSelectedIds != null) {
+      setSelectedIds(new Set(initialSelectedIds));
       return;
     }
     const defaults = menuItem.toppings
       .filter(t => t.includedByDefault)
       .map(t => t.id);
     setSelectedIds(new Set(defaults));
-  }, [menuItem?.id]);
+  }, [menuItem?.id, menuItem?.toppings, replaceCartLineId, initialSelectedIds]);
 
   const toggle = useCallback((id: string) => {
     setSelectedIds(prev => {
@@ -73,11 +92,15 @@ export default function CustomizeItemScreen() {
     [toppingList],
   );
 
-  const handleAdd = () => {
+  const handleConfirm = () => {
     if (!menuItem) {
       return;
     }
-    addToCart(menuItem, selectedToppings);
+    if (replaceCartLineId) {
+      replaceCartLine(replaceCartLineId, menuItem, selectedToppings);
+    } else {
+      addToCart(menuItem, selectedToppings);
+    }
     navigation.goBack();
   };
 
@@ -101,11 +124,15 @@ export default function CustomizeItemScreen() {
         <Button
           mode="contained"
           onPress={() => {
-            addToCart(menuItem, []);
+            if (replaceCartLineId) {
+              replaceCartLine(replaceCartLineId, menuItem, []);
+            } else {
+              addToCart(menuItem, []);
+            }
             navigation.goBack();
           }}
           style={[styles.cta, {backgroundColor: theme.colors.primary}]}>
-          Add to order
+          {replaceCartLineId ? 'Save line' : 'Add to order'}
         </Button>
       </View>
     );
@@ -203,11 +230,11 @@ export default function CustomizeItemScreen() {
 
       <Button
         mode="contained"
-        icon="cart-plus"
-        onPress={handleAdd}
+        icon={replaceCartLineId ? 'check' : 'cart-plus'}
+        onPress={handleConfirm}
         style={[styles.cta, {backgroundColor: theme.colors.primary}]}
         contentStyle={styles.ctaContent}>
-        Add to order
+        {replaceCartLineId ? 'Update order line' : 'Add to order'}
       </Button>
     </ScrollView>
   );

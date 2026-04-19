@@ -128,6 +128,12 @@ interface AppContextType {
   // Cart
   cartItems: CartItem[];
   addToCart: (item: MenuItem, selectedToppings?: SelectedTopping[]) => void;
+  /** Swap toppings (and merge qty) for an existing line — used from Order → Edit toppings. */
+  replaceCartLine: (
+    cartLineId: string,
+    menuItem: MenuItem,
+    selectedToppings: SelectedTopping[],
+  ) => void;
   removeFromCart: (cartLineId: string) => void;
   updateCartQuantity: (cartLineId: string, quantity: number) => void;
   clearCart: () => void;
@@ -332,6 +338,38 @@ export function AppProvider({children}: {children: ReactNode}) {
     });
   }, []);
 
+  const replaceCartLine = useCallback(
+    (cartLineId: string, menuItem: MenuItem, selectedToppings: SelectedTopping[]) => {
+      const normalizedItem = normalizeMenuItem(menuItem);
+      const toppings = [...selectedToppings].sort((a, b) => a.id.localeCompare(b.id));
+      const key = selectionKey(normalizedItem.id, toppings);
+
+      setCartItems(prev => {
+        const oldLine = prev.find(ci => ci.cartLineId === cartLineId);
+        const qty = oldLine?.quantity ?? 1;
+        const without = prev.filter(ci => ci.cartLineId !== cartLineId);
+        const mergeTarget = without.find(
+          ci => selectionKey(ci.menuItem.id, ci.selectedToppings ?? []) === key,
+        );
+        if (mergeTarget) {
+          return without.map(ci =>
+            ci.cartLineId === mergeTarget.cartLineId
+              ? {...ci, quantity: ci.quantity + qty}
+              : ci,
+          );
+        }
+        const line: CartItem = {
+          cartLineId: uuidv4(),
+          menuItem: normalizedItem,
+          quantity: qty,
+          selectedToppings: toppings,
+        };
+        return [...without, line];
+      });
+    },
+    [],
+  );
+
   const removeFromCart = useCallback((cartLineId: string) => {
     setCartItems(prev => prev.filter(ci => ci.cartLineId !== cartLineId));
   }, []);
@@ -436,6 +474,7 @@ export function AppProvider({children}: {children: ReactNode}) {
         deleteMenuItem,
         cartItems,
         addToCart,
+        replaceCartLine,
         removeFromCart,
         updateCartQuantity,
         clearCart,

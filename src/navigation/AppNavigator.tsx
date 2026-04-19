@@ -21,13 +21,21 @@ import {useAuth} from '../context/AuthContext';
 export type MenuStackParamList = {
   MenuList: undefined;
   MenuItemForm: {itemId?: string};
-  MenuItemCustomize: {itemId: string};
+  MenuItemCustomize: {
+    itemId: string;
+    replaceCartLineId?: string;
+    initialSelectedIds?: string[];
+  };
 };
 
 export type CartStackParamList = {
   Cart: undefined;
   Receipt: {orderId: string};
-  MenuItemCustomize: {itemId: string};
+  MenuItemCustomize: {
+    itemId: string;
+    replaceCartLineId?: string;
+    initialSelectedIds?: string[];
+  };
 };
 
 export type HistoryStackParamList = {
@@ -70,7 +78,7 @@ function MenuStackNavigator() {
       <MenuStack.Screen
         name="MenuItemCustomize"
         component={CustomizeItemScreen}
-        options={{title: 'Customize'}}
+        options={{title: 'Toppings'}}
       />
     </MenuStack.Navigator>
   );
@@ -91,7 +99,7 @@ function CartStackNavigator() {
       <CartStack.Screen
         name="MenuItemCustomize"
         component={CustomizeItemScreen}
-        options={{title: 'Customize'}}
+        options={{title: 'Toppings'}}
       />
     </CartStack.Navigator>
   );
