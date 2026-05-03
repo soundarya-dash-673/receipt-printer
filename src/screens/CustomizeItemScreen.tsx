@@ -203,9 +203,9 @@ export default function CustomizeItemScreen() {
           <Text variant="labelLarge" style={[styles.sectionLabel, {color: theme.colors.primary}]}>
             Always included
           </Text>
-          {requiredToppings.map(t => (
+          {requiredToppings.map((t, i) => (
             <View
-              key={t.id}
+              key={`req-${i}-${t.id}`}
               style={[styles.row, styles.rowLocked, {backgroundColor: theme.colors.surface}]}>
               <MaterialCommunityIcons name="lock" size={22} color={theme.colors.outline} />
               <View style={styles.rowText}>
@@ -233,11 +233,11 @@ export default function CustomizeItemScreen() {
             ]}>
             Standard (uncheck to remove)
           </Text>
-          {standardOptional.map(t => {
+          {standardOptional.map((t, i) => {
             const checked = selectedIds.has(t.id);
             return (
               <View
-                key={t.id}
+                key={`std-${i}-${t.id}`}
                 style={[styles.row, {backgroundColor: theme.colors.surface}]}>
                 <Checkbox
                   status={checked ? 'checked' : 'unchecked'}
@@ -268,11 +268,11 @@ export default function CustomizeItemScreen() {
             ]}>
             Extras & add-ons
           </Text>
-          {extraToppings.map(t => {
+          {extraToppings.map((t, i) => {
             const checked = selectedIds.has(t.id);
             return (
               <View
-                key={t.id}
+                key={`ext-${i}-${t.id}`}
                 style={[styles.row, {backgroundColor: theme.colors.surface}]}>
                 <Checkbox
                   status={checked ? 'checked' : 'unchecked'}

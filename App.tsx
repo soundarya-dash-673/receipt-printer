@@ -6,6 +6,7 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import {AppProvider} from './src/context/AppContext';
 import {AuthProvider} from './src/context/AuthContext';
+import BluetoothWarmup from './src/components/BluetoothWarmup';
 
 const lightTheme = {
   ...MD3LightTheme,
@@ -44,6 +45,7 @@ export default function App(): React.JSX.Element {
       <PaperProvider theme={theme}>
         <AuthProvider>
           <AppProvider>
+            <BluetoothWarmup />
             <NavigationContainer>
               <StatusBar
                 barStyle={isDarkMode ? 'light-content' : 'dark-content'}

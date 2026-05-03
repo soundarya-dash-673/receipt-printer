@@ -1,5 +1,6 @@
 import type {Order} from '../context/AppContext';
 import {getDb, isSqliteAvailable} from './database';
+import {localDayKey} from '../utils/dateKeys';
 
 export interface TodayStats {
   orderCount: number;
@@ -11,14 +12,6 @@ export interface DayRevenue {
   dayKey: string;
   orderCount: number;
   totalIncome: number;
-}
-
-function localDayKey(iso: string): string {
-  const d = new Date(iso);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
 }
 
 /** Same logic as SQL path, for AsyncStorage / in-memory order lists. */

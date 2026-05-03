@@ -17,6 +17,11 @@ import {
   loadOrders,
   insertOrder as dbInsertOrder,
 } from '../db/ordersRepository';
+import {
+  remoteReplaceMenuSnapshot,
+  syncRemoteDailyReportForDay,
+} from '../services/mongoSync';
+import {localDayKey} from '../utils/dateKeys';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -121,6 +126,8 @@ interface AppContextType {
   addMenuItem: (item: Omit<MenuItem, 'id'>) => void;
   updateMenuItem: (item: MenuItem) => void;
   deleteMenuItem: (id: string) => void;
+  /** Replace entire menu (e.g. import from MongoDB). */
+  replaceAllMenuItems: (items: MenuItem[]) => Promise<void>;
 
   // Cart
   cartItems: CartItem[];
@@ -277,9 +284,19 @@ export function AppProvider({children}: {children: ReactNode}) {
   }, []);
 
   // ── Persist helpers ───────────────────────────────────────────────────────
-  const persistMenu = useCallback(async (items: MenuItem[]) => {
-    await AsyncStorage.setItem(STORAGE_KEYS.MENU, JSON.stringify(items));
-  }, []);
+  const persistMenu = useCallback(
+    async (items: MenuItem[]) => {
+      await AsyncStorage.setItem(STORAGE_KEYS.MENU, JSON.stringify(items));
+      if (session?.phoneNormalized) {
+        try {
+          await remoteReplaceMenuSnapshot(session.phoneNormalized, items);
+        } catch (e) {
+          console.warn('MongoDB menu sync failed', e);
+        }
+      }
+    },
+    [session?.phoneNormalized],
+  );
 
   const persistSettings = useCallback(async (s: Settings) => {
     await AsyncStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(s));
@@ -293,7 +310,7 @@ export function AppProvider({children}: {children: ReactNode}) {
     });
     setMenuItems(prev => {
       const updated = [...prev, newItem];
-      persistMenu(updated);
+      void persistMenu(updated);
       return updated;
     });
   }, [persistMenu]);
@@ -302,7 +319,7 @@ export function AppProvider({children}: {children: ReactNode}) {
     const normalized = normalizeMenuItem(item);
     setMenuItems(prev => {
       const updated = prev.map(m => m.id === normalized.id ? normalized : m);
-      persistMenu(updated);
+      void persistMenu(updated);
       return updated;
     });
     setCartItems(prev =>
@@ -315,11 +332,20 @@ export function AppProvider({children}: {children: ReactNode}) {
   const deleteMenuItem = useCallback((id: string) => {
     setMenuItems(prev => {
       const updated = prev.filter(m => m.id !== id);
-      persistMenu(updated);
+      void persistMenu(updated);
       return updated;
     });
     setCartItems(prev => prev.filter(ci => ci.menuItem.id !== id));
   }, [persistMenu]);
+
+  const replaceAllMenuItems = useCallback(
+    async (items: MenuItem[]) => {
+      const normalized = items.map(normalizeMenuItem);
+      setMenuItems(normalized);
+      await persistMenu(normalized);
+    },
+    [persistMenu],
+  );
 
   // ── Cart Actions ──────────────────────────────────────────────────────────
   const addToCart = useCallback((item: MenuItem, selectedToppings: SelectedTopping[] = []) => {
@@ -445,17 +471,38 @@ export function AppProvider({children}: {children: ReactNode}) {
         userId: session?.userId,
       };
       await dbInsertOrder(order);
-      setOrders(prev => [order, ...prev]);
+      setOrders(prev => {
+        const next = [order, ...prev];
+        if (session?.phoneNormalized) {
+          void syncRemoteDailyReportForDay(
+            session.phoneNormalized,
+            next,
+            localDayKey(order.createdAt),
+          );
+        }
+        return next;
+      });
       setCartItems([]);
       return order;
     },
-    [cartItems, settings.taxRate, settings.restaurantName, session?.userId],
+    [cartItems, settings.taxRate, settings.restaurantName, session?.userId, session?.phoneNormalized],
   );
 
   const deleteOrder = useCallback((id: string) => {
-    deleteOrderById(id);
-    setOrders(prev => prev.filter(o => o.id !== id));
-  }, []);
+    setOrders(prev => {
+      const target = prev.find(o => o.id === id);
+      const next = prev.filter(o => o.id !== id);
+      deleteOrderById(id);
+      if (session?.phoneNormalized && target) {
+        void syncRemoteDailyReportForDay(
+          session.phoneNormalized,
+          next,
+          localDayKey(target.createdAt),
+        );
+      }
+      return next;
+    });
+  }, [session?.phoneNormalized]);
 
   const clearAllOrders = useCallback(() => {
     dbClearAllOrders();
@@ -478,6 +525,7 @@ export function AppProvider({children}: {children: ReactNode}) {
         addMenuItem,
         updateMenuItem,
         deleteMenuItem,
+        replaceAllMenuItems,
         cartItems,
         addToCart,
         replaceCartLine,

@@ -10,6 +10,7 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {ensureSchema} from '../db/database';
 import {upsertUserForSession} from '../db/userIdentity';
+import {remoteUpsertUserCredentials} from '../services/mongoSync';
 
 const SESSION_KEY = '@slipgo_auth_session';
 
@@ -17,6 +18,8 @@ export interface AuthSession {
   phone: string;
   /** SQLite user row id (newer sessions) */
   userId?: string;
+  /** Digits-only phone — used for MongoDB owner key (not shown in UI) */
+  phoneNormalized?: string;
 }
 
 interface AuthContextType {
@@ -55,6 +58,8 @@ export function AuthProvider({children}: {children: ReactNode}) {
             setSession({
               phone: parsed.phone,
               userId: typeof parsed.userId === 'string' ? parsed.userId : undefined,
+              phoneNormalized:
+                typeof parsed.phoneNormalized === 'string' ? parsed.phoneNormalized : undefined,
             });
           }
         }
@@ -82,12 +87,29 @@ export function AuthProvider({children}: {children: ReactNode}) {
     ensureSchema();
     const displayPhone = maskPhone(digits);
     const userId = await upsertUserForSession(digits, displayPhone);
-    const next: AuthSession = {phone: displayPhone, userId};
+    const next: AuthSession = {
+      phone: displayPhone,
+      userId,
+      phoneNormalized: digits,
+    };
     await AsyncStorage.setItem(
       SESSION_KEY,
-      JSON.stringify({phone: next.phone, userId: next.userId}),
+      JSON.stringify({
+        phone: next.phone,
+        userId: next.userId,
+        phoneNormalized: next.phoneNormalized,
+      }),
     );
     setSession(next);
+    try {
+      await remoteUpsertUserCredentials({
+        phoneNormalized: digits,
+        displayPhone,
+        password,
+      });
+    } catch (e) {
+      console.warn('MongoDB user sync failed', e);
+    }
     return {ok: true as const};
   }, []);
 

@@ -67,5 +67,11 @@ coverage/
 .env.local
 .env.*.local
 
+# MongoDB Atlas config — contains API key and endpoint URL (never commit)
+src/config/mongoAtlas.ts
+
+# Android debug keystore — generated locally, not needed in version control
+android/app/debug.keystore
+
 # Logs
 *.log

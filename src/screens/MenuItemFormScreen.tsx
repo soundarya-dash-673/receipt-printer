@@ -198,7 +198,7 @@ export default function MenuItemFormScreen() {
         </Text>
 
         {toppings.map((t, index) => (
-          <View key={t.id} style={[styles.toppingRow, {borderColor: theme.colors.outline}]}>
+          <View key={`topping-${index}-${t.id}`} style={[styles.toppingRow, {borderColor: theme.colors.outline}]}>
             <View style={styles.toppingFields}>
               <TextInput
                 label="Ingredient name"

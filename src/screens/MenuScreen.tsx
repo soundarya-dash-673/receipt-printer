@@ -44,7 +44,7 @@ export default function MenuScreen() {
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return menuItems.filter(item => {
+    const rows = menuItems.filter(item => {
       const toppingMatch = (item.toppings ?? []).some(top =>
         top.name.toLowerCase().includes(q),
       );
@@ -55,6 +55,14 @@ export default function MenuScreen() {
       const matchesCategory =
         selectedCategory === 'All' || item.category === selectedCategory;
       return matchesSearch && matchesCategory;
+    });
+    const seen = new Set<string>();
+    return rows.filter(item => {
+      if (seen.has(item.id)) {
+        return false;
+      }
+      seen.add(item.id);
+      return true;
     });
   }, [menuItems, search, selectedCategory]);
 

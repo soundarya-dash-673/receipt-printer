@@ -65,13 +65,21 @@ export default function CartScreen() {
 
   const filteredMenu = useMemo(() => {
     const q = menuSearch.toLowerCase();
-    return menuItems.filter(m => {
+    const rows = menuItems.filter(m => {
       const matchesSearch =
         m.name.toLowerCase().includes(q) ||
         m.category.toLowerCase().includes(q);
       const matchesCat =
         quickCategory === 'All' || m.category === quickCategory;
       return matchesSearch && matchesCat;
+    });
+    const seen = new Set<string>();
+    return rows.filter(m => {
+      if (seen.has(m.id)) {
+        return false;
+      }
+      seen.add(m.id);
+      return true;
     });
   }, [menuItems, menuSearch, quickCategory]);
 
@@ -129,8 +137,11 @@ export default function CartScreen() {
           ) : null}
           {toppings.length > 0 ? (
             <View style={styles.toppingList}>
-              {toppings.map(t => (
-                <Text key={t.id} variant="bodySmall" style={styles.toppingLine}>
+              {toppings.map((t, ti) => (
+                <Text
+                  key={`${item.cartLineId}-t-${ti}-${t.id}`}
+                  variant="bodySmall"
+                  style={styles.toppingLine}>
                   + {t.name} ({formatToppingPriceLabel(t.price)})
                 </Text>
               ))}

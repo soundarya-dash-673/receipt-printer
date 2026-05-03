@@ -20,10 +20,14 @@ import {
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useApp} from '../context/AppContext';
 import {useAuth} from '../context/AuthContext';
+import {isMongoConfigured} from '../config/mongoAtlas';
+import {remoteFetchMenu} from '../services/mongoSync';
+import BluetoothPrinterSettingsSection from '../components/BluetoothPrinterSettingsSection';
 
 export default function SettingsScreen() {
   const theme = useTheme();
-  const {settings, updateSettings, menuItems, orders, clearAllOrders} = useApp();
+  const {settings, updateSettings, menuItems, orders, clearAllOrders, replaceAllMenuItems} =
+    useApp();
   const {session, logout} = useAuth();
 
   const [restaurantName, setRestaurantName] = useState(settings.restaurantName);
@@ -36,6 +40,7 @@ export default function SettingsScreen() {
     message: '',
   });
   const [taxError, setTaxError] = useState('');
+  const [mongoPulling, setMongoPulling] = useState(false);
 
   useEffect(() => {
     setRestaurantName(settings.restaurantName);
@@ -62,6 +67,32 @@ export default function SettingsScreen() {
   };
 
   const totalRevenue = orders.reduce((s, o) => s + o.total, 0);
+
+  const handlePullMenuFromMongo = async () => {
+    if (!session?.phoneNormalized) {
+      setSnackbar({visible: true, message: 'Sign in to sync with MongoDB.'});
+      return;
+    }
+    if (!isMongoConfigured()) {
+      setSnackbar({visible: true, message: 'Configure MongoDB in src/config/mongoAtlas.ts first.'});
+      return;
+    }
+    setMongoPulling(true);
+    try {
+      const items = await remoteFetchMenu(session.phoneNormalized);
+      if (!items?.length) {
+        setSnackbar({visible: true, message: 'No menu document found in MongoDB for this account.'});
+        return;
+      }
+      await replaceAllMenuItems(items);
+      setSnackbar({visible: true, message: 'Menu replaced from MongoDB.'});
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'MongoDB request failed';
+      setSnackbar({visible: true, message: msg});
+    } finally {
+      setMongoPulling(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -152,6 +183,8 @@ export default function SettingsScreen() {
           </View>
         </Surface>
 
+        <BluetoothPrinterSettingsSection />
+
         {/* Stats */}
         <Surface style={styles.sectionCard} elevation={1}>
           <View style={styles.sectionInner}>
@@ -194,6 +227,36 @@ export default function SettingsScreen() {
           labelStyle={styles.saveBtnLabel}>
           Save Settings
         </Button>
+
+        {/* MongoDB cloud sync */}
+        <Surface style={styles.sectionCard} elevation={1}>
+          <View style={styles.sectionInner}>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="cloud-sync-outline" size={20} color={theme.colors.primary} />
+              <Text variant="titleSmall" style={styles.sectionTitle}>MongoDB (Atlas Data API)</Text>
+            </View>
+            <Divider style={styles.divider} />
+            <Text variant="bodySmall" style={{color: theme.colors.onSurfaceVariant, marginBottom: 10}}>
+              Sign-in, menu edits, and daily sales metrics sync when{' '}
+              <Text style={{fontFamily: 'monospace'}}>mongoAtlas.ts</Text> is filled in. API keys in
+              the app are for trusted devices only.
+            </Text>
+            <Text variant="bodyMedium" style={{marginBottom: 8}}>
+              Status:{' '}
+              <Text style={{fontWeight: '700', color: isMongoConfigured() ? '#2E7D32' : '#757575'}}>
+                {isMongoConfigured() ? 'Configured' : 'Not configured'}
+              </Text>
+            </Text>
+            <Button
+              mode="outlined"
+              icon="download"
+              loading={mongoPulling}
+              disabled={mongoPulling || !isMongoConfigured()}
+              onPress={handlePullMenuFromMongo}>
+              Download menu from MongoDB
+            </Button>
+          </View>
+        </Surface>
 
         {/* Account */}
         <Surface style={styles.sectionCard} elevation={1}>
